@@ -132,22 +132,27 @@ io.on('connection', (socket) => {
 
     io.to(roomId).emit('dice:result', result);
 
-    // Auto screamer for critical fail (d20 = 1)
-    if (sides === 20 && rolls.includes(1)) {
-      io.to(socket.id).emit('screamer:trigger', { id: 'auto-crit-fail', intensity: 0.7 });
-      // notify GMs as well
-      room.gms.forEach((gmId) => io.to(gmId).emit('screamer:notice', { target: socket.id, reason: 'crit-fail', result }));
+    // Auto screamer for critical fail (1) or critical success (20) on d20
+    if (sides === 20) {
+      if (rolls.includes(1)) {
+        io.to(socket.id).emit('screamer:trigger', { id: 'auto-crit-fail', intensity: 0.7 });
+        room.gms.forEach((gmId) => io.to(gmId).emit('screamer:notice', { target: socket.id, reason: 'crit-fail', result }));
+      }
+      if (rolls.includes(20)) {
+        io.to(socket.id).emit('screamer:trigger', { id: 'auto-crit-success', intensity: 0.9 });
+        room.gms.forEach((gmId) => io.to(gmId).emit('screamer:notice', { target: socket.id, reason: 'crit-success', result }));
+      }
     }
   });
 
   // GM triggers screamer
-  socket.on('screamer:send', ({ roomId, targets = 'all', screamerId = 'default', intensity = 0.8 }) => {
+  socket.on('screamer:send', ({ roomId, targets = 'all', screamerId = 'default', intensity = 0.8, imageUrl, soundUrl }) => {
     const room = rooms.get(roomId);
     if (!room) return;
     // ensure sender is GM
     if (!room.gms.has(socket.id)) return;
 
-    const payload = { id: screamerId, intensity };
+    const payload = { id: screamerId, intensity, imageUrl, soundUrl };
     if (targets === 'all') {
       // to all players (not GMs)
       for (const [sid] of room.players) {

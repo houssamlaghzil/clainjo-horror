@@ -10,7 +10,8 @@
     "start": "node server/index.js",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "maj": "git pull && docker compose up -d --build --remove-orphans"
   },
   "dependencies": {
     "react": "^19.1.1",
