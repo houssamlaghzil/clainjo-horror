@@ -53,7 +53,7 @@ export default function WizardPlayer() {
 
   return (
     <div style={{ border: '2px dashed rgba(255,255,255,0.18)', borderRadius: 12, padding: 12, background: 'rgba(0,0,0,0.25)' }}>
-      <h3>Wizard Basel — Envoyez votre sort</h3>
+      <h3>Wizard Battle — Envoyez votre sort</h3>
       {wizardLocked ? (
         <div style={{ padding: 12, background: 'rgba(0,0,0,0.35)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)' }}>
           <strong>Sort envoyé.</strong> En attente des autres joueurs...

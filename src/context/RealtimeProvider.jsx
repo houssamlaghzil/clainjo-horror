@@ -44,7 +44,7 @@ export function RealtimeProvider({ children }) {
   const [serverVersion, setServerVersion] = useState('');
   const [hintBubble, setHintBubble] = useState(null); // { id, kind, value, expiresAt }
 
-  // Wizard Basel state
+  // Wizard Battle state
   const [wizardActive, setWizardActive] = useState(false);
   const [wizardRound, setWizardRound] = useState(0);
   const [wizardLocked, setWizardLocked] = useState(false);
@@ -118,7 +118,7 @@ export function RealtimeProvider({ children }) {
       setHintBubble({ id, kind, value: Number(value || 0), expiresAt });
     });
 
-    // Wizard Basel events
+    // Wizard Battle events
     s.on('wizard:state', (st) => {
       setWizardActive(Boolean(st?.active));
       setWizardRound(Number(st?.round || 0));
@@ -236,7 +236,7 @@ export function RealtimeProvider({ children }) {
     setHintBubble(null);
   }, [roomId, hintBubble, ensureJoin]);
 
-  // Wizard Basel actions
+  // Wizard Battle actions
   const wizardToggle = useCallback((active) => {
     if (!roomId) return;
     const justJoined = ensureJoin();
@@ -309,7 +309,7 @@ export function RealtimeProvider({ children }) {
     // hint bubble
     hintBubble, setHintBubble,
 
-    // wizard basel
+    // Wizard Battle
     wizardActive,
     wizardRound,
     wizardLocked,

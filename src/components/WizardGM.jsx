@@ -55,7 +55,7 @@ export default function WizardGM() {
   return (
     <div style={{ border: '2px solid #154a8a', borderRadius: 12, padding: 12, background: 'rgba(21,74,138,0.08)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0 }}>Wizard Basel — Console MJ</h3>
+        <h3 style={{ margin: 0 }}>Wizard Battle — Console MJ</h3>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span>Manche: <strong>{wizardRound}</strong></span>
           <button onClick={onToggle} style={{ background: wizardActive ? '#7a1b1b' : '#154a8a', color: '#fff', padding: '6px 10px', borderRadius: 8 }}>
@@ -65,7 +65,7 @@ export default function WizardGM() {
       </div>
 
       {!wizardActive && (
-        <div style={{ marginTop: 8, opacity: 0.85 }}>Le mode Wizard Basel est inactif.</div>
+        <div style={{ marginTop: 8, opacity: 0.85 }}>Le mode Wizard Battle est inactif.</div>
       )}
 
       {wizardActive && (

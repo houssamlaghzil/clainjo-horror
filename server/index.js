@@ -18,7 +18,7 @@ const AUTO_SCREAMER_INTENSITY_SUCCESS = 0.9; // on d20 critical success
 const HINT_DURATION_MS_DEFAULT = 5000;       // how long the bubble stays clickable
 const HINT_MALUS_SCREAMER_ID = SCREAMER_DEFAULT_ID; // screamer shown on malus claim
 const HINT_MALUS_SCREAMER_INTENSITY = SCREAMER_DEFAULT_INTENSITY;
-// Wizard Basel (AI arbitration)
+// Wizard Battle (AI arbitration)
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-nano';
 const WIZARD_AI_TIMEOUT_MS = 4000; // keep total round < 5s
 const WIZARD_MAX_TEAM_SIZE = 3; // pairs, last may be a trio
@@ -246,7 +246,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  // ---- Wizard Basel mode ----
+  // ---- Wizard Battle mode ----
   // Toggle by GM
   socket.on('wizard:toggle', ({ roomId, active }) => {
     const room = rooms.get(roomId);
@@ -365,7 +365,7 @@ function getOrCreateRoom(roomId) {
       pendingHints: new Map(), // socketId -> Map<hintId, { kind, value, expiresAt }>
       // modifiers to apply on next dice roll for a player
       modifiers: new Map(), // socketId -> Array<{ kind: 'bonus'|'malus', value: number, id: string }>
-      // Wizard Basel state
+      // Wizard Battle state
       wizardActive: false,
       wizardRound: 0,
       wizardSubmissions: new Map(), // socketId -> { text, ts }
