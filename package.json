@@ -11,7 +11,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "maj": "docker compose down && git pull && docker compose up -d --build --remove-orphans"
+    "maj": "docker compose down || true && docker rm -f clainjo-horror || true && git pull && docker compose up -d --build --remove-orphans"
   },
   "dependencies": {
     "react": "^19.1.1",
