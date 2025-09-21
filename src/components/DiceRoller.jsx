@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 
+// ==== Tunable globals for DiceRoller ====
+const QUICK_SIDES = [4, 6, 8, 10, 12, 20, 100];
+const ROLLING_FAILSAFE_MS = 1500; // stops spinner if no result arrives
+const DICE_COUNT_MIN = 1;
+const DICE_COUNT_MAX = 100;
+
 export default function DiceRoller() {
   const { rollDice, diceLog, players } = useRealtime();
   const [sides, setSides] = useState(20);
@@ -9,7 +15,7 @@ export default function DiceRoller() {
   const [rolling, setRolling] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  const quickSides = useMemo(() => [4, 6, 8, 10, 12, 20, 100], []);
+  const quickSides = useMemo(() => QUICK_SIDES, []);
   const nameById = useMemo(() => {
     const map = new Map();
     (players || []).forEach((p) => map.set(p.socketId, p.name || p.socketId.slice(0, 4)));
@@ -23,7 +29,7 @@ export default function DiceRoller() {
     rollDice({ sides: s, count: c, label });
     setRolling(true);
     // fail-safe stop if no event comes (network hiccup)
-    setTimeout(() => setRolling(false), 1500);
+    setTimeout(() => setRolling(false), ROLLING_FAILSAFE_MS);
   };
 
   // stop rolling as soon as a new result appears
@@ -66,7 +72,7 @@ export default function DiceRoller() {
           </label>
           <label>
             Nombre
-            <input type="number" min="1" max="100" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: 80 }} />
+            <input type="number" min={DICE_COUNT_MIN} max={DICE_COUNT_MAX} value={count} onChange={(e) => setCount(e.target.value)} style={{ width: 80 }} />
           </label>
           <label style={{ flex: 1 }}>
             Libellé
@@ -102,6 +108,11 @@ export default function DiceRoller() {
             {r.label ? <span> [{r.label}] </span> : ' '}
             <strong style={{ color: '#e1062c' }}>{r.rolls?.join(', ')}</strong>
             <span> = <strong>{r.total}</strong></span>
+            {r.modifier && (
+              <span style={{ marginLeft: 8, fontSize: 12, opacity: 0.85 }}>
+                | mod: {r.modifier.kind === 'malus' ? '+' : '-'}{r.modifier.value} {r.modifier.kind}
+              </span>
+            )}
           </div>
         ))}
       </div>

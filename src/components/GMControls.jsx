@@ -1,11 +1,26 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 
+// ==== Tunable globals for GMControls (screamers) ====
+export const DEFAULT_SCREAMER_INTENSITY = 0.8;
+export const SCREAMER_TYPES = [
+  { value: 'default', label: 'Default' },
+  { value: 'ghost', label: 'Ghost' },
+  { value: 'shriek', label: 'Shriek' },
+  { value: 'heartbeat', label: 'Heartbeat' },
+];
+
 export default function GMControls() {
-  const { players, sendScreamer } = useRealtime();
+  const { players, sendScreamer, sendHint } = useRealtime();
   const [targets, setTargets] = useState('all'); // 'all' | [socketId]
   const [screamerId, setScreamerId] = useState('default');
-  const [intensity, setIntensity] = useState(0.8);
+  const [intensity, setIntensity] = useState(DEFAULT_SCREAMER_INTENSITY);
+
+  // hint state
+  const [hintTarget, setHintTarget] = useState('');
+  const [hintKind, setHintKind] = useState('bonus'); // 'bonus' | 'malus'
+  const [hintValue, setHintValue] = useState(2);
+  const [hintDuration, setHintDuration] = useState(5000);
 
   const playerOptions = useMemo(() => players.map((p) => ({ value: p.socketId, label: p.name || p.socketId.slice(0, 4) })), [players]);
 
@@ -22,6 +37,13 @@ export default function GMControls() {
   const onSend = (e) => {
     e.preventDefault();
     sendScreamer({ targets, screamerId, intensity: Number(intensity) });
+  };
+
+  const onSendHint = (e) => {
+    e.preventDefault();
+    const target = hintTarget || (players[0]?.socketId || '');
+    if (!target) return;
+    sendHint({ target, kind: hintKind, value: Number(hintValue), durationMs: Number(hintDuration) });
   };
 
   const toggleTarget = (sid) => {
@@ -67,10 +89,9 @@ export default function GMControls() {
         <label>
           Type de screamer
           <select value={screamerId} onChange={(e) => setScreamerId(e.target.value)}>
-            <option value="default">Default</option>
-            <option value="ghost">Ghost</option>
-            <option value="shriek">Shriek</option>
-            <option value="heartbeat">Heartbeat</option>
+            {SCREAMER_TYPES.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
           </select>
         </label>
         <label>
@@ -78,6 +99,37 @@ export default function GMControls() {
           <input type="range" min="0" max="1" step="0.05" value={intensity} onChange={(e) => setIntensity(e.target.value)} />
         </label>
         <button type="submit" style={{ backgroundColor: '#8b0000', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Envoyer</button>
+      </form>
+
+      <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '12px 0' }} />
+
+      <h3>Contrôles MJ — Indices (bonus/malus)</h3>
+      <form onSubmit={onSendHint} style={{ display: 'grid', gap: 8 }}>
+        <label>
+          Cible
+          <select value={hintTarget} onChange={(e) => setHintTarget(e.target.value)}>
+            <option value="">(choisir)</option>
+            {players.map((p) => (
+              <option key={p.socketId} value={p.socketId}>{p.name || p.socketId.slice(0,4)}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Type
+          <select value={hintKind} onChange={(e) => setHintKind(e.target.value)}>
+            <option value="bonus">Bonus (total - valeur)</option>
+            <option value="malus">Malus (total + valeur)</option>
+          </select>
+        </label>
+        <label>
+          Valeur
+          <input type="number" value={hintValue} onChange={(e) => setHintValue(e.target.value)} min="0" step="1" />
+        </label>
+        <label>
+          Durée (ms)
+          <input type="number" value={hintDuration} onChange={(e) => setHintDuration(e.target.value)} min="1000" step="500" />
+        </label>
+        <button type="submit" style={{ backgroundColor: '#0a6d36', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Envoyer l'indice</button>
       </form>
     </div>
   );

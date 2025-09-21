@@ -42,6 +42,7 @@ export function RealtimeProvider({ children }) {
   const [diceLog, setDiceLog] = useState([]);
   const [chat, setChat] = useState([]);
   const [serverVersion, setServerVersion] = useState('');
+  const [hintBubble, setHintBubble] = useState(null); // { id, kind, value, expiresAt }
 
   // screamer UI
   const [screamer, setScreamer] = useState(null); // { id, intensity, imageUrl?, soundUrl?, ts }
@@ -98,6 +99,12 @@ export function RealtimeProvider({ children }) {
     s.on('screamer:trigger', ({ id = 'default', intensity = 0.8, imageUrl, soundUrl }) => {
       // Let ScreamerOverlay handle audio + haptics centrally
       setScreamer({ id, intensity, imageUrl, soundUrl, ts: Date.now() });
+    });
+
+    // hint bubble notification from server (GM -> player)
+    s.on('hint:notify', ({ id, kind = 'bonus', value = 0, durationMs = 5000 }) => {
+      const expiresAt = Date.now() + Math.max(1000, Number(durationMs));
+      setHintBubble({ id, kind, value: Number(value || 0), expiresAt });
     });
 
     return () => {
@@ -175,6 +182,23 @@ export function RealtimeProvider({ children }) {
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
+  // GM: send a hint to a single player
+  const sendHint = useCallback(({ target, kind = 'bonus', value = 0, durationMs = 5000 }) => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('hint:send', { roomId, target, kind, value, durationMs });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
+  // Player: claim the current hint bubble
+  const claimHint = useCallback(() => {
+    if (!roomId || !hintBubble?.id) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('hint:claim', { roomId, hintId: hintBubble.id });
+    if (justJoined) setTimeout(emit, 50); else emit();
+    setHintBubble(null);
+  }, [roomId, hintBubble, ensureJoin]);
+
   const value = useMemo(() => ({
     // connection
     socket: socketRef.current,
@@ -202,14 +226,19 @@ export function RealtimeProvider({ children }) {
     // screamer
     screamer, setScreamer,
 
+    // hint bubble
+    hintBubble, setHintBubble,
+
     // actions
     join,
     sendChat,
     rollDice,
     updatePlayer,
     sendScreamer,
+    sendHint,
+    claimHint,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, players, gms, diceLog, chat, serverVersion, screamer, join, sendChat, rollDice, updatePlayer, sendScreamer]);
+  }), [connected, roomId, role, name, hp, money, inventory, players, gms, diceLog, chat, serverVersion, screamer, hintBubble, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint]);
 
   return (
     <RealtimeContext.Provider value={value}>

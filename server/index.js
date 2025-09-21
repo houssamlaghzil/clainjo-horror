@@ -8,6 +8,17 @@ import { fileURLToPath } from 'url';
 
 const PORT = process.env.PORT || 4000;
 
+// ---- Config constants (tunable)
+const DICE_MAX_HISTORY = 200;
+const DICE_MAX_COUNT = 100;
+const SCREAMER_DEFAULT_ID = 'default';
+const SCREAMER_DEFAULT_INTENSITY = 0.8;
+const AUTO_SCREAMER_INTENSITY_FAIL = 0.7;    // on d20 critical fail
+const AUTO_SCREAMER_INTENSITY_SUCCESS = 0.9; // on d20 critical success
+const HINT_DURATION_MS_DEFAULT = 5000;       // how long the bubble stays clickable
+const HINT_MALUS_SCREAMER_ID = SCREAMER_DEFAULT_ID; // screamer shown on malus claim
+const HINT_MALUS_SCREAMER_INTENSITY = SCREAMER_DEFAULT_INTENSITY;
+
 const app = express();
 // CORS: dev accepts any origin (LAN access), prod typically same-origin inside container
 const isProd = process.env.NODE_ENV === 'production';
@@ -57,6 +68,10 @@ function getOrCreateRoom(roomId) {
       players: new Map(),
       gms: new Set(),
       diceLog: [],
+      // pendingHints: per-socket map of unclaimed hints with expiry
+      pendingHints: new Map(), // socketId -> Map<hintId, { kind, value, expiresAt }>
+      // modifiers to apply on next dice roll for a player
+      modifiers: new Map(), // socketId -> Array<{ kind: 'bonus'|'malus', value: number, id: string }>
     });
   }
   return rooms.get(roomId);
@@ -116,6 +131,44 @@ io.on('connection', (socket) => {
     }
   });
 
+  // GM sends a hint (bonus/malus) to one player
+  socket.on('hint:send', ({ roomId, target, kind = 'bonus', value = 0, durationMs }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    if (!room.gms.has(socket.id)) return; // only GM may send hints
+    if (!room.players.has(target)) return; // must target a player in the room
+
+    const id = Date.now() + ':' + Math.random().toString(36).slice(2);
+    const dur = typeof durationMs === 'number' ? durationMs : HINT_DURATION_MS_DEFAULT;
+    const expiresAt = Date.now() + Math.max(1000, dur);
+    // store pending hint for target
+    const byPlayer = room.pendingHints.get(target) || new Map();
+    byPlayer.set(id, { kind, value: Number(value || 0), expiresAt });
+    room.pendingHints.set(target, byPlayer);
+    // notify the target
+    io.to(target).emit('hint:notify', { id, kind, value: Number(value || 0), durationMs: dur });
+  });
+
+  // Player claims their hint bubble
+  socket.on('hint:claim', ({ roomId, hintId }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    const byPlayer = room.pendingHints.get(socket.id);
+    if (!byPlayer) return;
+    const h = byPlayer.get(hintId);
+    if (!h) return;
+    if (Date.now() > h.expiresAt) { byPlayer.delete(hintId); return; }
+    // move to modifiers queue
+    const q = room.modifiers.get(socket.id) || [];
+    q.push({ id: hintId, kind: h.kind === 'malus' ? 'malus' : 'bonus', value: Number(h.value || 0) });
+    room.modifiers.set(socket.id, q);
+    byPlayer.delete(hintId);
+    // if malus, trigger a screamer as per spec
+    if (h.kind === 'malus') {
+      io.to(socket.id).emit('screamer:trigger', { id: HINT_MALUS_SCREAMER_ID, intensity: HINT_MALUS_SCREAMER_INTENSITY });
+    }
+  });
+
   // Update character sheet
   socket.on('player:update', ({ roomId, hp, money, inventory }) => {
     const room = rooms.get(roomId);
@@ -136,36 +189,46 @@ io.on('connection', (socket) => {
     const room = rooms.get(roomId);
     if (!room) return;
 
-    const rolls = Array.from({ length: Math.max(1, Math.min(100, count)) }, () => 1 + Math.floor(Math.random() * Math.max(2, sides)));
-    const total = rolls.reduce((a, b) => a + b, 0);
-    const result = { id: Date.now() + ':' + Math.random().toString(36).slice(2), from: socket.id, sides, count, rolls, total, label, ts: Date.now() };
+    const rolls = Array.from({ length: Math.max(1, Math.min(DICE_MAX_COUNT, count)) }, () => 1 + Math.floor(Math.random() * Math.max(2, sides)));
+    let total = rolls.reduce((a, b) => a + b, 0);
+    // Apply a pending modifier if any for this player (single-use consumable)
+    let modifier = null;
+    const list = room.modifiers.get(socket.id);
+    if (Array.isArray(list) && list.length) {
+      modifier = list.shift();
+      if (modifier?.kind === 'bonus') total = Math.max(0, total - Number(modifier.value || 0));
+      if (modifier?.kind === 'malus') total = total + Number(modifier.value || 0);
+    }
+    const result = { id: Date.now() + ':' + Math.random().toString(36).slice(2), from: socket.id, sides, count, rolls, total, label, ts: Date.now(), modifier };
 
     room.diceLog.push(result);
-    if (room.diceLog.length > 200) room.diceLog.shift();
+    if (room.diceLog.length > DICE_MAX_HISTORY) room.diceLog.shift();
 
     io.to(roomId).emit('dice:result', result);
 
     // Auto screamer for critical fail (1) or critical success (20) on d20
     if (sides === 20) {
       if (rolls.includes(1)) {
-        io.to(socket.id).emit('screamer:trigger', { id: 'auto-crit-fail', intensity: 0.7 });
+        io.to(socket.id).emit('screamer:trigger', { id: 'auto-crit-fail', intensity: AUTO_SCREAMER_INTENSITY_FAIL });
         room.gms.forEach((gmId) => io.to(gmId).emit('screamer:notice', { target: socket.id, reason: 'crit-fail', result }));
       }
       if (rolls.includes(20)) {
-        io.to(socket.id).emit('screamer:trigger', { id: 'auto-crit-success', intensity: 0.9 });
+        io.to(socket.id).emit('screamer:trigger', { id: 'auto-crit-success', intensity: AUTO_SCREAMER_INTENSITY_SUCCESS });
         room.gms.forEach((gmId) => io.to(gmId).emit('screamer:notice', { target: socket.id, reason: 'crit-success', result }));
       }
     }
   });
 
   // GM triggers screamer
-  socket.on('screamer:send', ({ roomId, targets = 'all', screamerId = 'default', intensity = 0.8, imageUrl, soundUrl }) => {
+  socket.on('screamer:send', ({ roomId, targets = 'all', screamerId, intensity, imageUrl, soundUrl }) => {
     const room = rooms.get(roomId);
     if (!room) return;
     // ensure sender is GM
     if (!room.gms.has(socket.id)) return;
 
-    const payload = { id: screamerId, intensity, imageUrl, soundUrl };
+    const id = screamerId || SCREAMER_DEFAULT_ID;
+    const inten = typeof intensity === 'number' ? intensity : SCREAMER_DEFAULT_INTENSITY;
+    const payload = { id, intensity: inten, imageUrl, soundUrl };
     if (targets === 'all') {
       // to all players (not GMs)
       for (const [sid] of room.players) {
@@ -197,6 +260,8 @@ io.on('connection', (socket) => {
     room.players.delete(socket.id);
     room.gms.delete(socket.id);
     socketToRoom.delete(socket.id);
+    room.modifiers.delete(socket.id);
+    room.pendingHints.delete(socket.id);
 
     // notify
     io.to(roomId).emit('presence:update', {
