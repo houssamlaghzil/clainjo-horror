@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 
 export default function Chat() {
-  const { chat, sendChat, name } = useRealtime();
+  const { chat, sendChat } = useRealtime();
   const [text, setText] = useState('');
   const bottomRef = useRef(null);
 
@@ -20,16 +20,16 @@ export default function Chat() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', maxWidth: '100%' }}>
       <div style={{ flex: 1, overflowY: 'auto', border: '1px solid #333', padding: 8, borderRadius: 8 }}>
         {sorted.map((m) => (
           <div key={m.id} style={{ marginBottom: 6 }}>
-            <strong>{m.from || 'anon'}:</strong> <span>{m.text}</span>
+            <strong>{m.from || 'anon'}:</strong> <span style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{m.text}</span>
           </div>
         ))}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={onSend} style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+      <form onSubmit={onSend} style={{ display: 'flex', gap: 8, marginTop: 8, width: '100%' }}>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message" style={{ flex: 1 }} />
         <button type="submit">Envoyer</button>
       </form>

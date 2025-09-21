@@ -12,29 +12,29 @@ export default function Player() {
   const { enableImmersive } = useDeviceGuards();
 
   return (
-    <div style={{ padding: 12, display: 'grid', gap: 12 }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+    <div className="page">
+      <header className="page-header" style={{ justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <strong>Joueur:</strong> {name || '—'}
-          <span style={{ marginLeft: 12 }}><strong>Room:</strong> {roomId || '—'}</span>
-          <span style={{ marginLeft: 12, opacity: 0.8 }}><strong>Version:</strong> {serverVersion || '—'}</span>
+          <span><strong style={{ marginLeft: 12 }}>Room:</strong> {roomId || '—'}</span>
+          <span style={{ opacity: 0.8 }}><strong style={{ marginLeft: 12 }}>Version:</strong> {serverVersion || '—'}</span>
           {statusSummary && (
-            <span style={{ marginLeft: 12, opacity: 0.9 }}>
+            <span style={{ opacity: 0.9 }}>
               <strong>Statut:</strong> mod dé {statusSummary.diceMod > 0 ? `+${statusSummary.diceMod}` : statusSummary.diceMod}{statusSummary.narrative ? `, ${statusSummary.narrative}` : ''}
             </span>
           )}
         </div>
-        <div>
-          <span style={{ marginRight: 12, color: connected ? 'green' : 'red' }}>{connected ? 'Connecté' : 'Déconnecté'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: connected ? 'green' : 'red' }}>{connected ? 'Connecté' : 'Déconnecté'}</span>
           <button onClick={enableImmersive}>Activer mode immersif</button>
         </div>
       </header>
       {wizardActive ? (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+        <div className="stack">
           <WizardPlayer />
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+        <div className="stack">
           <CharacterSheet />
           <DiceRoller />
           <PresenceList />

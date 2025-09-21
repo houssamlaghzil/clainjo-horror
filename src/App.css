@@ -1,9 +1,19 @@
+/* Mobile-first root: full width, small padding */
 #root {
-  max-width: 1280px;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 12px;
   position: relative;
   z-index: 1; /* above body::after vignette */
+}
+
+/* Wider screens: constrain and increase breathing space */
+@media (min-width: 1024px) {
+  #root {
+    max-width: 1280px;
+    padding: 2rem;
+  }
 }
 
 /* Remove bright logo effects from the Vite template and keep it subtle */
@@ -34,4 +44,42 @@
 
 .read-the-docs {
   color: var(--fg-1);
+}
+
+/* --- Mobile-first layout helpers --- */
+.page {
+  width: 100%;
+  max-width: 100%;
+  display: grid;
+  gap: 12px;
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* GM desktop-oriented grid */
+.gm-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 1024px) {
+  .page {
+    gap: 16px;
+  }
+  .gm-grid {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
 }

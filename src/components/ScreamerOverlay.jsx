@@ -69,17 +69,49 @@ export default function ScreamerOverlay() {
     try {
       if (!('vibrate' in navigator)) return;
       const i = Math.max(0, Math.min(1, intensity));
-      // More intense => more pulses and longer durations
-      const baseOn = VIB_ON_MIN_MS + Math.round(i * VIB_ON_RANGE_MS);
-      const baseOff = VIB_OFF_MAX_MS - Math.round(i * VIB_OFF_RANGE_MS);
-      const bursts = VIB_BURSTS_MIN + Math.round(i * VIB_BURSTS_RANGE);
+      // Non-linear shaping: emphasize high intensities, de-emphasize low
+      // s ~ i^2.2 gives a slow ramp near 0 and a steep finish near 1
+      const s = Math.pow(i, 2.2);
+
+      // Derive durations and counts from shaped intensity.
+      // Longer ON and shorter OFF as s -> 1, with more bursts.
+      const onMs = Math.round(
+        VIB_ON_MIN_MS + s * (VIB_ON_RANGE_MS * 2) // allow more headroom at high intensity
+      );
+      const offMs = Math.max(
+        5,
+        Math.round(VIB_OFF_MAX_MS - s * (VIB_OFF_RANGE_MS * 2))
+      );
+      const bursts = Math.round(
+        VIB_BURSTS_MIN + s * (VIB_BURSTS_RANGE + 10) // extra pulses as we approach 1
+      );
+
+      // Build the pattern. To avoid a too-uniform feel, add a tiny jitter.
       const pattern = [];
       for (let b = 0; b < bursts; b++) {
-        pattern.push(baseOn, baseOff);
+        const jitter = (Math.random() * 0.2 + 0.9); // 0.9..1.1
+        pattern.push(Math.max(10, Math.round(onMs * jitter)));
+        pattern.push(Math.max(5, Math.round(offMs / jitter)));
       }
+
+      // At very high intensity, finish with a sustained rumble
+      if (s > 0.85) {
+        pattern.push(Math.round(150 + 450 * s));
+      }
+
+      // At very low intensity, keep it almost imperceptible:
+      // collapse to a couple tiny pulses with long rests
+      if (i < 0.08) {
+        const micro = Math.max(5, Math.round(10 * (0.5 + i)));
+        const rest = 120 + Math.round(300 * (1 - i));
+        navigator.vibrate([micro, rest, micro]);
+        return;
+      }
+
       navigator.vibrate(pattern);
     } catch (_) {
-      // ignore
+      // do nothing: vibration not supported or blocked
+      void 0;
     }
   };
 
