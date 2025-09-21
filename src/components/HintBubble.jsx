@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 
-// Top-level tunables for the hint bubble UI
+// Top-level tunables for the hint bubble UI (neutral appearance)
 const BUBBLE_SIZE = 56; // px
 const BUBBLE_MARGIN = 16; // px from screen edges
-const BUBBLE_BG = 'rgba(227,6,44,0.9)'; // default (malus-style); bonus will change color
-const BUBBLE_BG_BONUS = 'rgba(0,148,68,0.9)';
-const BUBBLE_BG_MALUS = 'rgba(227,6,44,0.9)';
+const BUBBLE_BG = 'rgba(16,16,16,0.92)';
+const BUBBLE_BORDER = '1px solid rgba(255,255,255,0.18)';
 const BUBBLE_TEXT_COLOR = '#fff';
 const HOVER_SCALE = 1.08;
 const WIGGLE_MS = 1200; // time for one wiggle step
@@ -48,7 +47,6 @@ export default function HintBubble() {
 
   const style = useMemo(() => {
     if (!hintBubble) return null;
-    const isBonus = hintBubble.kind !== 'malus';
     return {
       position: 'fixed',
       left: pos.x,
@@ -56,7 +54,8 @@ export default function HintBubble() {
       width: BUBBLE_SIZE,
       height: BUBBLE_SIZE,
       borderRadius: BUBBLE_SIZE / 2,
-      background: isBonus ? BUBBLE_BG_BONUS : BUBBLE_BG_MALUS,
+      background: BUBBLE_BG,
+      border: BUBBLE_BORDER,
       color: BUBBLE_TEXT_COLOR,
       display: 'flex',
       alignItems: 'center',
@@ -73,8 +72,6 @@ export default function HintBubble() {
 
   if (!hintBubble || !style) return null;
 
-  const label = hintBubble.kind === 'malus' ? `+${hintBubble.value}` : `-${hintBubble.value}`;
-
   return (
     <div
       title="Indice"
@@ -83,7 +80,7 @@ export default function HintBubble() {
       onMouseEnter={(e) => { e.currentTarget.style.transform = `scale(${HOVER_SCALE})`; }}
       onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
     >
-      {label}
+      ?
     </div>
   );
 }

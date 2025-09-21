@@ -18,6 +18,10 @@ const AUTO_SCREAMER_INTENSITY_SUCCESS = 0.9; // on d20 critical success
 const HINT_DURATION_MS_DEFAULT = 5000;       // how long the bubble stays clickable
 const HINT_MALUS_SCREAMER_ID = SCREAMER_DEFAULT_ID; // screamer shown on malus claim
 const HINT_MALUS_SCREAMER_INTENSITY = SCREAMER_DEFAULT_INTENSITY;
+// Wizard Basel (AI arbitration)
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-nano';
+const WIZARD_AI_TIMEOUT_MS = 4000; // keep total round < 5s
+const WIZARD_MAX_TEAM_SIZE = 3; // pairs, last may be a trio
 
 const app = express();
 // CORS: dev accepts any origin (LAN access), prod typically same-origin inside container
@@ -62,30 +66,17 @@ app.get('/api/version', (_req, res) => {
 const rooms = new Map(); // roomId -> { players: Map<socketId, player>, gm: Set<socketId>, diceLog: [] }
 const socketToRoom = new Map();
 
-function getOrCreateRoom(roomId) {
-  if (!rooms.has(roomId)) {
-    rooms.set(roomId, {
-      players: new Map(),
-      gms: new Set(),
-      diceLog: [],
-      // pendingHints: per-socket map of unclaimed hints with expiry
-      pendingHints: new Map(), // socketId -> Map<hintId, { kind, value, expiresAt }>
-      // modifiers to apply on next dice roll for a player
-      modifiers: new Map(), // socketId -> Array<{ kind: 'bonus'|'malus', value: number, id: string }>
-    });
-  }
-  return rooms.get(roomId);
-}
-
 function sanitizePublicPlayer(p) {
   // limit data exposed to other players
   const { socketId, name, hp = 0, money = 0, inventory = [], role = 'player' } = p;
   return { socketId, name, hp, money, inventory, role };
 }
 
+// Socket.IO connection handlers
 io.on('connection', (socket) => {
   // announce server meta including version
   socket.emit('server:meta', { version: APP_VERSION });
+
   // Client sends join with metadata
   socket.on('join', ({ roomId, role, name, hp = 0, money = 0, inventory = [] }) => {
     if (!roomId || !role || !name) return;
@@ -114,6 +105,7 @@ io.on('connection', (socket) => {
       players: Array.from(room.players.values()).map(sanitizePublicPlayer),
       gms: Array.from(room.gms.values()),
       diceLog: room.diceLog,
+      wizard: wizardStatePayload(room),
     });
   });
 
@@ -201,8 +193,10 @@ io.on('connection', (socket) => {
     }
     const result = { id: Date.now() + ':' + Math.random().toString(36).slice(2), from: socket.id, sides, count, rolls, total, label, ts: Date.now(), modifier };
 
-    room.diceLog.push(result);
-    if (room.diceLog.length > DICE_MAX_HISTORY) room.diceLog.shift();
+    const r = rooms.get(roomId);
+    if (!r) return;
+    r.diceLog.push(result);
+    if (r.diceLog.length > DICE_MAX_HISTORY) r.diceLog.shift();
 
     io.to(roomId).emit('dice:result', result);
 
@@ -210,11 +204,11 @@ io.on('connection', (socket) => {
     if (sides === 20) {
       if (rolls.includes(1)) {
         io.to(socket.id).emit('screamer:trigger', { id: 'auto-crit-fail', intensity: AUTO_SCREAMER_INTENSITY_FAIL });
-        room.gms.forEach((gmId) => io.to(gmId).emit('screamer:notice', { target: socket.id, reason: 'crit-fail', result }));
+        r.gms.forEach((gmId) => io.to(gmId).emit('screamer:notice', { target: socket.id, reason: 'crit-fail', result }));
       }
       if (rolls.includes(20)) {
         io.to(socket.id).emit('screamer:trigger', { id: 'auto-crit-success', intensity: AUTO_SCREAMER_INTENSITY_SUCCESS });
-        room.gms.forEach((gmId) => io.to(gmId).emit('screamer:notice', { target: socket.id, reason: 'crit-success', result }));
+        r.gms.forEach((gmId) => io.to(gmId).emit('screamer:notice', { target: socket.id, reason: 'crit-success', result }));
       }
     }
   });
@@ -248,9 +242,99 @@ io.on('connection', (socket) => {
       players: Array.from(room.players.values()).map(sanitizePublicPlayer),
       gms: Array.from(room.gms.values()),
       diceLog: room.diceLog,
+      wizard: wizardStatePayload(room),
     });
   });
 
+  // ---- Wizard Basel mode ----
+  // Toggle by GM
+  socket.on('wizard:toggle', ({ roomId, active }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    if (!room.gms.has(socket.id)) return;
+    const next = Boolean(active);
+    room.wizardActive = next;
+    room.wizardAIFailCount = 0;
+    if (next) {
+      startWizardRound(room);
+    } else {
+      // clear locks but keep history
+      room.wizardLocked.clear();
+      room.wizardSubmissions.clear();
+      room.wizardGroups = [];
+    }
+    io.to(roomId).emit('wizard:state', wizardStatePayload(room));
+  });
+
+  // Player submits a spell
+  socket.on('wizard:submit', ({ roomId, text }) => {
+    const room = rooms.get(roomId);
+    if (!room || !room.wizardActive) return;
+    if (!room.players.has(socket.id)) return;
+    const content = String(text || '').trim();
+    if (!content) return;
+    room.wizardSubmissions.set(socket.id, { text: content, ts: Date.now() });
+    room.wizardLocked.add(socket.id);
+    io.to(socket.id).emit('wizard:locked', { round: room.wizardRound });
+    // If all participants submitted, resolve
+    const participants = Array.from(room.players.keys());
+    const allSubmitted = participants.every((sid) => room.wizardSubmissions.has(sid));
+    if (allSubmitted) {
+      io.to(roomId).emit('wizard:round:resolving', { round: room.wizardRound });
+      resolveWizardRound(roomId);
+    } else {
+      io.to(roomId).emit('wizard:state', wizardStatePayload(room));
+    }
+  });
+
+  // GM forces resolution (AFK)
+  socket.on('wizard:force', ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room || !room.wizardActive) return;
+    if (!room.gms.has(socket.id)) return;
+    io.to(roomId).emit('wizard:round:resolving', { round: room.wizardRound, forced: true });
+    resolveWizardRound(roomId);
+  });
+
+  // GM retries AI after first failure
+  socket.on('wizard:retry', ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room || !room.wizardActive) return;
+    if (!room.gms.has(socket.id)) return;
+    if (room.wizardAIFailCount !== 1) return; // only one retry allowed
+    resolveWizardRound(roomId);
+  });
+
+  // GM provides manual results
+  socket.on('wizard:manual', ({ roomId, results }) => {
+    const room = rooms.get(roomId);
+    if (!room || !room.wizardActive) return;
+    if (!room.gms.has(socket.id)) return;
+    publishWizardResults(roomId, results, { source: 'manual' });
+  });
+
+  // GM publishes (after optional edits of AI result)
+  socket.on('wizard:publish', ({ roomId, results }) => {
+    const room = rooms.get(roomId);
+    if (!room || !room.wizardActive) return;
+    if (!room.gms.has(socket.id)) return;
+    publishWizardResults(roomId, results, { source: 'ai' });
+  });
+
+  // GM requests current wizard details
+  socket.on('wizard:get', ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room || !room.wizardActive) return;
+    if (!room.gms.has(socket.id)) return;
+    socket.emit('wizard:info', {
+      round: room.wizardRound,
+      groups: room.wizardGroups,
+      submissions: Object.fromEntries(room.wizardSubmissions),
+      history: room.wizardHistory.slice(-5),
+    });
+  });
+
+  // Disconnect
   socket.on('disconnect', () => {
     const roomId = socketToRoom.get(socket.id);
     if (!roomId) return;
@@ -270,6 +354,124 @@ io.on('connection', (socket) => {
     });
   });
 });
+
+function getOrCreateRoom(roomId) {
+  if (!rooms.has(roomId)) {
+    rooms.set(roomId, {
+      players: new Map(),
+      gms: new Set(),
+      diceLog: [],
+      // pendingHints: per-socket map of unclaimed hints with expiry
+      pendingHints: new Map(), // socketId -> Map<hintId, { kind, value, expiresAt }>
+      // modifiers to apply on next dice roll for a player
+      modifiers: new Map(), // socketId -> Array<{ kind: 'bonus'|'malus', value: number, id: string }>
+      // Wizard Basel state
+      wizardActive: false,
+      wizardRound: 0,
+      wizardSubmissions: new Map(), // socketId -> { text, ts }
+      wizardGroups: [], // Array<Array<socketId>>
+      wizardLocked: new Set(), // Set<socketId>
+      wizardHistory: [], // Array<{ round, groups, submissions, results, ts }>
+      wizardAIFailCount: 0,
+      statusEffects: new Map(), // socketId -> Array<{ type: 'narrative', text }>
+    });
+  }
+  return rooms.get(roomId);
+}
+
+// Resolve wizard round: call AI, handle failures
+async function resolveWizardRound(roomId) {
+  const room = rooms.get(roomId);
+  if (!room) return;
+  const round = room.wizardRound;
+  const submissions = Object.fromEntries(Array.from(room.wizardSubmissions.entries()));
+  const groups = room.wizardGroups;
+  // Build prompt
+  const playersById = Object.fromEntries(Array.from(room.players).map(([sid, p]) => [sid, { name: p.name || sid.slice(0,4) }]));
+  const payload = {
+    role: 'system',
+    content: (
+      'Tu es un arbitre impartial d\'un duel de sorcellerie. '\
+      + 'On te donne des sorts (texte libre) envoyés par des joueurs, regroupés par binômes/trinômes secrets. '\
+      + 'Règles: si un sort est incohérent/surpuissant, annule-le. Tiens compte de la cohérence univers, originalité, vitesse, et interactions élémentaires (feu vs glace etc.). '\
+      + 'Pour CHAQUE joueur, fournis un JSON strict décrivant: { inflicted: string, suffered: string, diceMod: integer (bonus = nombre négatif, malus = positif), hpDelta: integer (soin positif, dégâts négatif), narrative: string }. '\
+      + 'Réponds UNIQUEMENT en JSON objet map { <socketId>: {...} } sans texte additionnel.'
+    )
+  };
+  const input = {
+    round,
+    players: playersById,
+    groups,
+    submissions,
+  };
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('Missing OPENAI_API_KEY');
+    const text = await callOpenAIForWizard({ apiKey, model: OPENAI_MODEL, payload: [payload, { role: 'user', content: JSON.stringify(input) }] });
+    let results;
+    try {
+      results = JSON.parse(text);
+    } catch (_) {
+      throw new Error('AI JSON parse error');
+    }
+    // Send to GM for review
+    const gmIds = Array.from(room.gms);
+    gmIds.forEach((gmId) => io.to(gmId).emit('wizard:aiResult', { round, groups, submissions, results }));
+    room.wizardAIFailCount = 0;
+  } catch (err) {
+    room.wizardAIFailCount = (room.wizardAIFailCount || 0) + 1;
+    const gmIds = Array.from(room.gms);
+    const canRetry = room.wizardAIFailCount === 1;
+    gmIds.forEach((gmId) => io.to(gmId).emit('wizard:aiError', { round, message: String(err.message || err), canRetry }));
+  }
+}
+
+function publishWizardResults(roomId, results, meta) {
+  const room = rooms.get(roomId);
+  if (!room) return;
+  const round = room.wizardRound;
+  const applied = {};
+  // Apply per-player
+  for (const [sid, r] of Object.entries(results || {})) {
+    const inflicted = String(r?.inflicted || '');
+    const suffered = String(r?.suffered || '');
+    const diceMod = Number(r?.diceMod || 0);
+    const hpDelta = Number(r?.hpDelta || 0);
+    const narrative = String(r?.narrative || '');
+    // queue dice modifier (bonus negative reduces total; malus positive increases total)
+    if (diceMod !== 0) {
+      const list = room.modifiers.get(sid) || [];
+      list.push({ id: `wiz-${round}-${Date.now()}`, kind: diceMod > 0 ? 'malus' : 'bonus', value: Math.abs(diceMod) });
+      room.modifiers.set(sid, list);
+    }
+    // apply hp change to stored player sheet
+    const p = room.players.get(sid);
+    if (p && Number.isFinite(hpDelta) && hpDelta !== 0) {
+      p.hp = Math.max(0, Number(p.hp || 0) + hpDelta);
+    }
+    // narrative effect persists (simple list)
+    if (narrative) {
+      const eff = room.statusEffects.get(sid) || [];
+      eff.push({ type: 'narrative', text: narrative, round });
+      room.statusEffects.set(sid, eff);
+    }
+    applied[sid] = { inflicted, suffered, diceMod, hpDelta, narrative };
+    // notify privately
+    io.to(sid).emit('wizard:results', { round, inflicted, suffered, diceMod, hpDelta, narrative });
+  }
+  // push history
+  room.wizardHistory.push({ round, ts: Date.now(), groups: room.wizardGroups, submissions: Object.fromEntries(room.wizardSubmissions), results: applied, source: meta?.source || 'ai' });
+  // broadcast updated presence (hp changes) and wizard state
+  const roomIdLocal = roomId;
+  io.to(roomIdLocal).emit('presence:update', {
+    players: Array.from(room.players.values()).map(sanitizePublicPlayer),
+    gms: Array.from(room.gms.values()),
+  });
+  io.to(roomIdLocal).emit('wizard:published', { round });
+  // start next round
+  startWizardRound(room);
+  io.to(roomIdLocal).emit('wizard:state', wizardStatePayload(room));
+}
 
 // SPA fallback (after Socket.IO setup); let websocket handle /socket.io
 app.get('*', (_req, res) => {

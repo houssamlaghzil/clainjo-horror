@@ -44,6 +44,17 @@ export function RealtimeProvider({ children }) {
   const [serverVersion, setServerVersion] = useState('');
   const [hintBubble, setHintBubble] = useState(null); // { id, kind, value, expiresAt }
 
+  // Wizard Basel state
+  const [wizardActive, setWizardActive] = useState(false);
+  const [wizardRound, setWizardRound] = useState(0);
+  const [wizardLocked, setWizardLocked] = useState(false);
+  const [wizardGroupsCount, setWizardGroupsCount] = useState(0);
+  const [wizardResolving, setWizardResolving] = useState(false);
+  const [wizardAIResult, setWizardAIResult] = useState(null); // GM only
+  const [wizardAIError, setWizardAIError] = useState(null); // { message, canRetry }
+  const [wizardMyResult, setWizardMyResult] = useState(null); // player-only last result
+  const [statusSummary, setStatusSummary] = useState(null); // { diceMod, narrative, hpDelta }
+
   // screamer UI
   const [screamer, setScreamer] = useState(null); // { id, intensity, imageUrl?, soundUrl?, ts }
   const lastJoinKeyRef = useRef('');
@@ -107,6 +118,25 @@ export function RealtimeProvider({ children }) {
       setHintBubble({ id, kind, value: Number(value || 0), expiresAt });
     });
 
+    // Wizard Basel events
+    s.on('wizard:state', (st) => {
+      setWizardActive(Boolean(st?.active));
+      setWizardRound(Number(st?.round || 0));
+      setWizardGroupsCount(Number(st?.groupsCount || 0));
+      // If my socket is in locked list, lock UI
+      const me = socketRef.current?.id;
+      const locked = Array.isArray(st?.locked) && me ? st.locked.includes(me) : false;
+      setWizardLocked(locked);
+      setWizardResolving(false);
+    });
+    s.on('wizard:locked', () => setWizardLocked(true));
+    s.on('wizard:round:resolving', () => setWizardResolving(true));
+    s.on('wizard:aiResult', (payload) => { setWizardAIResult(payload); setWizardAIError(null); setWizardResolving(false); });
+    s.on('wizard:aiError', (err) => { setWizardAIError(err); setWizardAIResult(null); setWizardResolving(false); });
+    s.on('wizard:published', () => { setWizardAIResult(null); setWizardAIError(null); setWizardResolving(false); setWizardLocked(false); });
+    s.on('wizard:results', (res) => { setWizardMyResult(res); setStatusSummary({ diceMod: res?.diceMod || 0, narrative: res?.narrative || '', hpDelta: res?.hpDelta || 0 }); setWizardResolving(false); });
+    s.on('wizard:info', (payload) => { setWizardAIResult(payload); });
+
     return () => {
       s.close();
     };
@@ -165,6 +195,13 @@ export function RealtimeProvider({ children }) {
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
+  const wizardGet = useCallback(() => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('wizard:get', { roomId });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
   const updatePlayer = useCallback(({ hp, money, inventory }) => {
     if (!roomId) return;
     const justJoined = ensureJoin();
@@ -199,6 +236,49 @@ export function RealtimeProvider({ children }) {
     setHintBubble(null);
   }, [roomId, hintBubble, ensureJoin]);
 
+  // Wizard Basel actions
+  const wizardToggle = useCallback((active) => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('wizard:toggle', { roomId, active });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
+  const wizardSubmit = useCallback((text) => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('wizard:submit', { roomId, text });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
+  const wizardForce = useCallback(() => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('wizard:force', { roomId });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
+  const wizardRetry = useCallback(() => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('wizard:retry', { roomId });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
+  const wizardManual = useCallback((results) => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('wizard:manual', { roomId, results });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
+  const wizardPublish = useCallback((results) => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('wizard:publish', { roomId, results });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
   const value = useMemo(() => ({
     // connection
     socket: socketRef.current,
@@ -229,6 +309,17 @@ export function RealtimeProvider({ children }) {
     // hint bubble
     hintBubble, setHintBubble,
 
+    // wizard basel
+    wizardActive,
+    wizardRound,
+    wizardLocked,
+    wizardGroupsCount,
+    wizardResolving,
+    wizardAIResult,
+    wizardAIError,
+    wizardMyResult,
+    statusSummary,
+
     // actions
     join,
     sendChat,
@@ -237,8 +328,15 @@ export function RealtimeProvider({ children }) {
     sendScreamer,
     sendHint,
     claimHint,
+    wizardToggle,
+    wizardSubmit,
+    wizardForce,
+    wizardRetry,
+    wizardGet,
+    wizardManual,
+    wizardPublish,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, players, gms, diceLog, chat, serverVersion, screamer, hintBubble, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint]);
+  }), [connected, roomId, role, name, hp, money, inventory, players, gms, diceLog, chat, serverVersion, screamer, hintBubble, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardManual, wizardPublish]);
 
   return (
     <RealtimeContext.Provider value={value}>
