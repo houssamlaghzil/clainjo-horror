@@ -8,23 +8,17 @@ import { fileURLToPath } from 'url';
 const PORT = process.env.PORT || 4000;
 
 const app = express();
-// CORS: dev allows Vite, prod typically same-origin inside container
+// CORS: dev accepts any origin (LAN access), prod typically same-origin inside container
 const isProd = process.env.NODE_ENV === 'production';
 app.use(cors(isProd ? undefined : {
-  origin: [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-  ],
+  origin: true, // reflect request origin in dev to allow LAN devices
   methods: ['GET', 'POST'],
 }));
 
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: isProd ? undefined : {
-    origin: [
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-    ],
+    origin: true, // allow any dev origin (Vite served over LAN)
     methods: ['GET', 'POST'],
   },
   transports: ['websocket'], // favor low-latency ws

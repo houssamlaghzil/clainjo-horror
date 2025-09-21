@@ -49,7 +49,8 @@ export function RealtimeProvider({ children }) {
   useEffect(() => {
     // In production (served by the same Express app), connect to same-origin.
     // In development, use Vite env VITE_SOCKET_URL if provided, otherwise localhost:4000.
-    const socketUrl = import.meta.env.PROD ? undefined : (import.meta.env.VITE_SOCKET_URL || 'http://localhost:4000');
+    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const socketUrl = import.meta.env.PROD ? undefined : (import.meta.env.VITE_SOCKET_URL || `http://${host}:4000`);
     const s = io(socketUrl, { transports: ['websocket'] });
     socketRef.current = s;
 
