@@ -1,0 +1,46 @@
+flowchart TD
+  %% Client
+  subgraph Client_React_Vite
+    RP[RealtimeProvider.jsx - SocketIO client etat global]
+    Landing[Landing.jsx - Connexion]
+    PlayerPage[Player.jsx - UI Joueur mobile first]
+    GMPage[GM.jsx - UI MJ desktop]
+    Chat[Chat.jsx]
+    Dice[DiceRoller.jsx]
+    Sheet[CharacterSheet.jsx]
+    Pres[PresenceList.jsx]
+  end
+
+  %% Serveur
+  subgraph Serveur_Node_Express_SocketIO
+    API[Express API - endpoints version et wizard_status]
+    IO[SocketIO Server]
+    Rooms[Room Manager]
+    Wizard[Wizard Orchestrator]
+  end
+
+  %% Externe
+  O[OpenAI API]
+
+  %% Connexions principales
+  RP <--> IO
+  RP --> API
+  Landing --> RP
+  PlayerPage --> RP
+  GMPage --> RP
+  Chat --> RP
+  Dice --> RP
+  Sheet --> RP
+  Pres --> RP
+
+  IO --> Rooms
+  Rooms --> Wizard
+  Wizard --> O
+
+  %% Evenements typiques
+  RP -->|emit joinRoom| IO
+  IO -->|event state_update| RP
+  RP -->|emit chat_message| IO
+  IO -->|event chat_new| RP
+  RP -->|emit dice_roll| IO
+  IO -->|event dice_result| RP

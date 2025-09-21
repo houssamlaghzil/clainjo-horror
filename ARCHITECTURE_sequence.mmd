@@ -1,0 +1,27 @@
+sequenceDiagram
+  participant GM as MJ
+  participant P1 as Joueur_1
+  participant P2 as Joueur_2
+  participant S as Serveur
+  participant O as OpenAI
+
+  GM->>S: wizard:start {roomId, prompt, timer}
+  S-->>P1: wizard:round:start
+  S-->>P2: wizard:round:start
+
+  P1->>S: wizard:submit {socketId, text}
+  P2->>S: wizard:submit {socketId, text}
+  S-->>GM: wizard:submissions:update
+
+  S->>S: resolveWizardRound(roomId)
+  S->>O: callOpenAIForWizard [system, user]
+  O-->>S: JSON {groups, results by socketId}
+  S-->>GM: wizard:aiResult {groups, submissions, results}
+
+  GM->>S: wizard:publish {results} ou wizard:manual
+
+  S->>S: publishWizardResults(roomId, results)
+  S-->>P1: wizard:results prive
+  S-->>P2: wizard:results prive
+  S-->>GM: wizard:published
+  S->>S: startWizardRound(room) manche_suivante
