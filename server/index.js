@@ -22,6 +22,8 @@ const HINT_MALUS_SCREAMER_INTENSITY = SCREAMER_DEFAULT_INTENSITY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-nano';
 const WIZARD_AI_TIMEOUT_MS = 4000; // keep total round < 5s
 const WIZARD_MAX_TEAM_SIZE = 3; // pairs, last may be a trio
+let LAST_WIZARD_ERROR_AT = 0;
+let LAST_WIZARD_ERROR_MSG = '';
 
 const app = express();
 // CORS: dev accepts any origin (LAN access), prod typically same-origin inside container
@@ -60,6 +62,14 @@ const APP_VERSION = process.env.APP_VERSION || readBuiltVersion() || 'dev-local'
 // Simple version endpoint (useful for probes/UI)
 app.get('/api/version', (_req, res) => {
   res.json({ version: APP_VERSION });
+});
+
+// Internal status for Wizard Battle
+app.get('/api/wizard/status', (_req, res) => {
+  if (LAST_WIZARD_ERROR_AT) {
+    return res.status(503).json({ ok: false, since: LAST_WIZARD_ERROR_AT, message: LAST_WIZARD_ERROR_MSG || 'wizard error' });
+  }
+  res.json({ ok: true });
 });
 
 // In-memory state (for dev/demo). In prod, use a DB or state service.
@@ -358,6 +368,7 @@ io.on('connection', (socket) => {
 function getOrCreateRoom(roomId) {
   if (!rooms.has(roomId)) {
     rooms.set(roomId, {
+      id: roomId,
       players: new Map(),
       gms: new Set(),
       diceLog: [],
@@ -379,6 +390,105 @@ function getOrCreateRoom(roomId) {
   return rooms.get(roomId);
 }
 
+function wizardStatePayload(room) {
+  // Compact state for clients
+  return {
+    active: Boolean(room.wizardActive),
+    round: Number(room.wizardRound || 0),
+    groupsCount: Array.isArray(room.wizardGroups) ? room.wizardGroups.length : 0,
+    locked: Array.from(room.wizardLocked || []),
+  };
+}
+
+function startWizardRound(room) {
+  if (!room) return;
+  // Reset round state
+  room.wizardRound = Number(room.wizardRound || 0) + 1;
+  room.wizardSubmissions.clear();
+  room.wizardLocked.clear();
+
+  // Build groups (pairs; last may be a trio)
+  const participants = Array.from(room.players.keys());
+  const groups = [];
+  // Simple deterministic grouping by join order
+  while (participants.length >= 2) {
+    const a = participants.shift();
+    const b = participants.shift();
+    groups.push([a, b]);
+  }
+  if (participants.length === 1) {
+    // Add the remaining player to the last group if trio allowed
+    if (groups.length && WIZARD_MAX_TEAM_SIZE >= 3) {
+      groups[groups.length - 1].push(participants.shift());
+    } else {
+      // Or keep a solo group
+      groups.push([participants.shift()]);
+    }
+  }
+  room.wizardGroups = groups;
+
+  // Broadcast new state
+  io.to(room.id).emit('wizard:state', wizardStatePayload(room));
+}
+
+// Lightweight OpenAI call wrapper for wizard AI
+async function callOpenAIForWizard({ apiKey, model, payload }) {
+  // Prefer the Responses API for GPT-4.1 family
+  const url = 'https://api.openai.com/v1/responses';
+  const headers = {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  const body = {
+    model,
+    input: payload,
+    max_output_tokens: 1024,
+  };
+
+  // Use global fetch if available
+  if (typeof fetch === 'function') {
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`OpenAI error ${res.status}: ${txt}`);
+    }
+    const out = await res.json();
+    // Try to extract a sensible text output
+    const text = out.output_text
+      || out.output?.[0]?.content?.[0]?.text
+      || out.choices?.[0]?.message?.content
+      || (typeof out === 'string' ? out : JSON.stringify(out));
+    return String(text || '');
+  }
+
+  // Fallback using https if fetch is not available
+  const https = await import('node:https');
+  const payloadStr = JSON.stringify(body);
+  const options = {
+    method: 'POST',
+    headers: { ...headers, 'Content-Length': Buffer.byteLength(payloadStr) },
+  };
+  const raw = await new Promise((resolve, reject) => {
+    const req = https.request(url, options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) resolve(data);
+        else reject(new Error(`OpenAI error ${res.statusCode}: ${data}`));
+      });
+    });
+    req.on('error', reject);
+    req.write(payloadStr);
+    req.end();
+  });
+  const out = JSON.parse(raw);
+  const text = out.output_text
+    || out.output?.[0]?.content?.[0]?.text
+    || out.choices?.[0]?.message?.content
+    || (typeof out === 'string' ? out : JSON.stringify(out));
+  return String(text || '');
+}
+
 // Resolve wizard round: call AI, handle failures
 async function resolveWizardRound(roomId) {
   const room = rooms.get(roomId);
@@ -388,16 +498,17 @@ async function resolveWizardRound(roomId) {
   const groups = room.wizardGroups;
   // Build prompt
   const playersById = Object.fromEntries(Array.from(room.players).map(([sid, p]) => [sid, { name: p.name || sid.slice(0,4) }]));
-  const payload = {
-    role: 'system',
-    content: (
-      'Tu es un arbitre impartial d\'un duel de sorcellerie. '\
-      + 'On te donne des sorts (texte libre) envoyés par des joueurs, regroupés par binômes/trinômes secrets. '\
-      + 'Règles: si un sort est incohérent/surpuissant, annule-le. Tiens compte de la cohérence univers, originalité, vitesse, et interactions élémentaires (feu vs glace etc.). '\
-      + 'Pour CHAQUE joueur, fournis un JSON strict décrivant: { inflicted: string, suffered: string, diceMod: integer (bonus = nombre négatif, malus = positif), hpDelta: integer (soin positif, dégâts négatif), narrative: string }. '\
-      + 'Réponds UNIQUEMENT en JSON objet map { <socketId>: {...} } sans texte additionnel.'
-    )
-  };
+  let payload;
+  try {
+    const content = `Tu es un arbitre impartial d'un duel de sorcellerie. On te donne des sorts (texte libre) envoyés par des joueurs, regroupés par binômes/trinômes secrets. Règles: si un sort est incohérent/surpuissant, annule-le. Tiens compte de la cohérence univers, originalité, vitesse, et interactions élémentaires (feu vs glace etc.). Pour CHAQUE joueur, fournis un JSON strict décrivant: { inflicted: string, suffered: string, diceMod: integer (bonus = nombre négatif, malus = positif), hpDelta: integer (soin positif, dégâts négatif), narrative: string }. Réponds UNIQUEMENT en JSON objet map { <socketId>: {...} } sans texte additionnel.`;
+    payload = { role: 'system', content };
+  } catch (e) {
+    console.error('[wizard] Prompt build error:', e);
+    const gmIds = Array.from(room.gms);
+    const message = 'Erreur de construction du prompt (wizard)';
+    gmIds.forEach((gmId) => io.to(gmId).emit('wizard:aiError', { round, message, canRetry: false }));
+    return;
+  }
   const input = {
     round,
     players: playersById,
@@ -419,7 +530,10 @@ async function resolveWizardRound(roomId) {
     gmIds.forEach((gmId) => io.to(gmId).emit('wizard:aiResult', { round, groups, submissions, results }));
     room.wizardAIFailCount = 0;
   } catch (err) {
+    console.error('[wizard] AI evaluation error:', err);
     room.wizardAIFailCount = (room.wizardAIFailCount || 0) + 1;
+    LAST_WIZARD_ERROR_AT = Date.now();
+    LAST_WIZARD_ERROR_MSG = String(err?.message || err) || 'wizard error';
     const gmIds = Array.from(room.gms);
     const canRetry = room.wizardAIFailCount === 1;
     gmIds.forEach((gmId) => io.to(gmId).emit('wizard:aiError', { round, message: String(err.message || err), canRetry }));
