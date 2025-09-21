@@ -45,6 +45,7 @@ export function RealtimeProvider({ children }) {
 
   // screamer UI
   const [screamer, setScreamer] = useState(null); // { id, intensity, imageUrl?, soundUrl?, ts }
+  const lastJoinKeyRef = useRef('');
 
   // lazy-connect socket
   useEffect(() => {
@@ -52,20 +53,18 @@ export function RealtimeProvider({ children }) {
     // In development, use Vite env VITE_SOCKET_URL if provided, otherwise localhost:4000.
     const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
     const socketUrl = import.meta.env.PROD ? undefined : (import.meta.env.VITE_SOCKET_URL || `http://${host}:4000`);
-    const s = io(socketUrl, { transports: ['websocket'] });
+    const s = io(socketUrl); // allow default transports (polling + ws upgrade)
     socketRef.current = s;
 
     s.on('connect', () => {
       setConnected(true);
-      // Auto rejoin if we have a saved session but no active room
+      // Auto-restore session data if none in state
       const sess = loadSession();
       if (sess && !roomId) {
         const { roomId: r, role: ro, name: nm, hp: hp0 = 10, money: m0 = 0, inventory: inv0 = [] } = sess;
         if (r && ro && nm) {
-          // set local state and emit join
           setRoomId(r); setRole(ro); setName(nm);
           setHp(hp0); setMoney(m0); setInventory(inv0);
-          s.emit('join', { roomId: r, role: ro, name: nm, hp: hp0, money: m0, inventory: inv0 });
         }
       }
     });
@@ -115,31 +114,66 @@ export function RealtimeProvider({ children }) {
     setInventory(inventory);
     // persist session for reload-resume
     saveSession({ roomId, role, name, hp, money, inventory });
-    socketRef.current?.emit('join', { roomId, role, name, hp, money, inventory });
+    // Immediate emit if already connected; otherwise the effect below will handle it
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('join', { roomId, role, name, hp, money, inventory });
+      lastJoinKeyRef.current = `${roomId}|${role}|${name}`;
+    }
   }, [saveSession]);
+
+  // Ensure join is emitted once connected and identity is ready (handles race at first connect)
+  useEffect(() => {
+    const s = socketRef.current;
+    if (!s || !s.connected) return;
+    if (!roomId || !role || !name) return;
+    const key = `${roomId}|${role}|${name}`;
+    if (lastJoinKeyRef.current === key) return; // already emitted for this identity
+    s.emit('join', { roomId, role, name, hp, money, inventory });
+    lastJoinKeyRef.current = key;
+  }, [connected, roomId, role, name, hp, money, inventory]);
+
+  // Helper to ensure we have emitted join for the current identity
+  const ensureJoin = useCallback(() => {
+    const s = socketRef.current;
+    if (!s || !s.connected) return;
+    if (!roomId || !role || !name) return;
+    const key = `${roomId}|${role}|${name}`;
+    if (lastJoinKeyRef.current === key) return false;
+    s.emit('join', { roomId, role, name, hp, money, inventory });
+    lastJoinKeyRef.current = key;
+    return true;
+  }, [roomId, role, name, hp, money, inventory]);
 
   const sendChat = useCallback(({ text, to }) => {
     if (!roomId) return;
-    socketRef.current?.emit('chat:message', { roomId, text, from: name, to });
-  }, [roomId, name]);
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('chat:message', { roomId, text, from: name, to });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, name, ensureJoin]);
 
   const rollDice = useCallback(({ sides = 6, count = 1, label }) => {
     if (!roomId) return;
-    socketRef.current?.emit('dice:roll', { roomId, sides, count, label });
-  }, [roomId]);
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('dice:roll', { roomId, sides, count, label });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
 
   const updatePlayer = useCallback(({ hp, money, inventory }) => {
     if (!roomId) return;
-    socketRef.current?.emit('player:update', { roomId, hp, money, inventory });
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('player:update', { roomId, hp, money, inventory });
+    if (justJoined) setTimeout(emit, 50); else emit();
     if (typeof hp === 'number') setHp(hp);
     if (typeof money === 'number') setMoney(money);
     if (Array.isArray(inventory)) setInventory(inventory);
-  }, [roomId]);
+  }, [roomId, ensureJoin]);
 
   const sendScreamer = useCallback(({ targets = 'all', screamerId = 'default', intensity = 0.8, imageUrl, soundUrl }) => {
     if (!roomId) return;
-    socketRef.current?.emit('screamer:send', { roomId, targets, screamerId, intensity, imageUrl, soundUrl });
-  }, [roomId]);
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('screamer:send', { roomId, targets, screamerId, intensity, imageUrl, soundUrl });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
 
   const value = useMemo(() => ({
     // connection

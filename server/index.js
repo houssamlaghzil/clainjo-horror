@@ -22,7 +22,7 @@ const io = new Server(server, {
     origin: true, // allow any dev origin (Vite served over LAN)
     methods: ['GET', 'POST'],
   },
-  transports: ['websocket'], // favor low-latency ws
+  // Use defaults: polling + websocket upgrade for better compatibility
 });
 
 // Serve frontend build in production (single container)
