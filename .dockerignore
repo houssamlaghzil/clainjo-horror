@@ -1,0 +1,21 @@
+# Dependencies
+node_modules
+
+# Build output
+/dist
+
+# Git
+.git
+.gitignore
+
+# IDE/Editor
+.vscode
+.idea
+
+# Logs
+npm-debug.log*
+*.log
+
+# Misc
+Dockerfile*
+README.md
