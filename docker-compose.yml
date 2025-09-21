@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: clainjo-horror
     restart: unless-stopped
     environment:
       - NODE_ENV=production
