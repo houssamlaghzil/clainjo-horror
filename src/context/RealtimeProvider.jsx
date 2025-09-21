@@ -41,6 +41,7 @@ export function RealtimeProvider({ children }) {
   const [gms, setGms] = useState([]);
   const [diceLog, setDiceLog] = useState([]);
   const [chat, setChat] = useState([]);
+  const [serverVersion, setServerVersion] = useState('');
 
   // screamer UI
   const [screamer, setScreamer] = useState(null); // { id, intensity, imageUrl?, soundUrl?, ts }
@@ -69,6 +70,11 @@ export function RealtimeProvider({ children }) {
       }
     });
     s.on('disconnect', () => setConnected(false));
+
+    // server meta (version, etc.)
+    s.on('server:meta', ({ version }) => {
+      if (version) setServerVersion(version);
+    });
 
     // presence
     s.on('presence:update', (payload) => {
@@ -156,6 +162,9 @@ export function RealtimeProvider({ children }) {
     diceLog,
     chat,
 
+    // server info
+    serverVersion,
+
     // screamer
     screamer, setScreamer,
 
@@ -166,7 +175,7 @@ export function RealtimeProvider({ children }) {
     updatePlayer,
     sendScreamer,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, players, gms, diceLog, chat, screamer, join, sendChat, rollDice, updatePlayer, sendScreamer]);
+  }), [connected, roomId, role, name, hp, money, inventory, players, gms, diceLog, chat, serverVersion, screamer, join, sendChat, rollDice, updatePlayer, sendScreamer]);
 
   return (
     <RealtimeContext.Provider value={value}>

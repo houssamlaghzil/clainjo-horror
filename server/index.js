@@ -3,6 +3,7 @@ import http from 'http';
 import cors from 'cors';
 import { Server } from 'socket.io';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const PORT = process.env.PORT || 4000;
@@ -30,6 +31,22 @@ const __dirname = path.dirname(__filename);
 const distPath = path.resolve(__dirname, '../dist');
 app.use(express.static(distPath));
 
+// App version: prefer env, fallback to version.txt written at build time, else 'dev-local'
+function readBuiltVersion() {
+  try {
+    const p = path.join(__dirname, '../version.txt');
+    return fs.readFileSync(p, 'utf8').trim();
+  } catch (_) {
+    return null;
+  }
+}
+const APP_VERSION = process.env.APP_VERSION || readBuiltVersion() || 'dev-local';
+
+// Simple version endpoint (useful for probes/UI)
+app.get('/api/version', (_req, res) => {
+  res.json({ version: APP_VERSION });
+});
+
 // In-memory state (for dev/demo). In prod, use a DB or state service.
 const rooms = new Map(); // roomId -> { players: Map<socketId, player>, gm: Set<socketId>, diceLog: [] }
 const socketToRoom = new Map();
@@ -52,6 +69,8 @@ function sanitizePublicPlayer(p) {
 }
 
 io.on('connection', (socket) => {
+  // announce server meta including version
+  socket.emit('server:meta', { version: APP_VERSION });
   // Client sends join with metadata
   socket.on('join', ({ roomId, role, name, hp = 0, money = 0, inventory = [] }) => {
     if (!roomId || !role || !name) return;

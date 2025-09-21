@@ -7,7 +7,7 @@ import { useRealtime } from '../context/RealtimeProvider.jsx';
 import { useDeviceGuards } from '../hooks/useDeviceGuards.js';
 
 export default function GM() {
-  const { name, roomId, connected } = useRealtime();
+  const { name, roomId, connected, serverVersion } = useRealtime();
   const { enableImmersive } = useDeviceGuards();
 
   return (
@@ -16,6 +16,7 @@ export default function GM() {
         <div>
           <strong>Maître du jeu:</strong> {name || '—'}
           <span style={{ marginLeft: 12 }}><strong>Room:</strong> {roomId || '—'}</span>
+          <span style={{ marginLeft: 12, opacity: 0.8 }}><strong>Version:</strong> {serverVersion || '—'}</span>
         </div>
         <div>
           <span style={{ marginRight: 12, color: connected ? 'green' : 'red' }}>{connected ? 'Connecté' : 'Déconnecté'}</span>
