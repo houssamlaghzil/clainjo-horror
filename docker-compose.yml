@@ -1,18 +1,16 @@
-version: "3.8"
-
+name: clainjo-horror
 services:
   app:
     image: clainjo-horror:latest
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: clainjo-horror
     restart: unless-stopped
     environment:
       - NODE_ENV=production
       - PORT=4000
     ports:
-      - "4000:4000"
+      - "${HOST_PORT:-4000}:4000"
     # If you later want to persist anything (logs, etc.), declare volumes here.
     # volumes:
     #   - ./data:/usr/src/app/data
