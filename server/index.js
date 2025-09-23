@@ -120,6 +120,27 @@ io.on('connection', (socket) => {
       gms: Array.from(room.gms.values()),
     });
 
+  // GM-only: update another player's character sheet
+  socket.on('gm:player:update', ({ roomId, target, hp, money, inventory, strength, intelligence, agility, skills }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    if (!room.gms.has(socket.id)) return; // only GM can update others
+    if (!target) return;
+    const player = room.players.get(target);
+    if (!player) return;
+    if (typeof hp === 'number') player.hp = hp;
+    if (typeof money === 'number') player.money = money;
+    if (Array.isArray(inventory)) player.inventory = inventory;
+    if (typeof strength === 'number') player.strength = strength;
+    if (typeof intelligence === 'number') player.intelligence = intelligence;
+    if (typeof agility === 'number') player.agility = agility;
+    if (Array.isArray(skills)) player.skills = skills;
+    io.to(roomId).emit('presence:update', {
+      players: Array.from(room.players.values()).map(sanitizePublicPlayer),
+      gms: Array.from(room.gms.values()),
+    });
+  });
+
     // send initial state to the new client
     socket.emit('state:init', {
       you: player,
@@ -182,7 +203,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Update character sheet
+  // Update character sheet (player-self). Preserve locked items/skills from template.
   socket.on('player:update', ({ roomId, hp, money, inventory, strength, intelligence, agility, skills }) => {
     const room = rooms.get(roomId);
     if (!room) return;
@@ -190,11 +211,42 @@ io.on('connection', (socket) => {
     if (!player) return;
     if (typeof hp === 'number') player.hp = hp;
     if (typeof money === 'number') player.money = money;
-    if (Array.isArray(inventory)) player.inventory = inventory;
+    // Locked preservation helpers
+    const key = (it) => `${(it?.name||'').trim()}::${(it?.description||'').trim()}`;
+    if (Array.isArray(inventory)) {
+      const existingLocked = Array.isArray(player.inventory) ? player.inventory.filter((it) => it && it.locked) : [];
+      const incoming = inventory.filter(Boolean).map((it) => ({ name: String(it.name||''), description: String(it.description||''), locked: !!it.locked }));
+      const map = new Map();
+      // Always keep existing locked entries
+      for (const it of existingLocked) map.set(key(it), { ...it, locked: true });
+      // Add non-locked incoming entries (ignore attempts to remove locked ones)
+      for (const it of incoming) {
+        const k = key(it);
+        if (map.has(k)) continue; // don't duplicate
+        if (it.locked) {
+          // player cannot flip lock state; ignore locked incoming (will be kept from existing if any)
+          continue;
+        }
+        map.set(k, { ...it, locked: false });
+      }
+      player.inventory = Array.from(map.values());
+    }
     if (typeof strength === 'number') player.strength = strength;
     if (typeof intelligence === 'number') player.intelligence = intelligence;
     if (typeof agility === 'number') player.agility = agility;
-    if (Array.isArray(skills)) player.skills = skills;
+    if (Array.isArray(skills)) {
+      const existingLocked = Array.isArray(player.skills) ? player.skills.filter((it) => it && it.locked) : [];
+      const incoming = skills.filter(Boolean).map((it) => ({ name: String(it.name||''), description: String(it.description||''), locked: !!it.locked }));
+      const map = new Map();
+      for (const it of existingLocked) map.set(key(it), { ...it, locked: true });
+      for (const it of incoming) {
+        const k = key(it);
+        if (map.has(k)) continue;
+        if (it.locked) continue; // players cannot alter locked state
+        map.set(k, { ...it, locked: false });
+      }
+      player.skills = Array.from(map.values());
+    }
     io.to(roomId).emit('presence:update', {
       players: Array.from(room.players.values()).map(sanitizePublicPlayer),
       gms: Array.from(room.gms.values()),

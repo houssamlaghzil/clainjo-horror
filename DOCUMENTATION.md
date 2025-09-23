@@ -1,3 +1,6 @@
+  - `gm:player:update` (MJ -> serveur)
+    - Permet au MJ de modifier la fiche d’un autre joueur: `{ roomId, target, hp?, money?, strength?, intelligence?, agility?, inventory?, skills? }`
+    - Diffuse `presence:update` à la room.
 - Fiche de personnage
   - `player:update` (joueur -> serveur)
     - Payload étendu:
@@ -98,6 +101,7 @@ Note: `docker-compose.yml` charge automatiquement `.env` via `env_file`.
   - Inventaire structuré (objets avec `name`, `description`).
   - Compétences structurées (compétences avec `name`, `description`).
   - Tout est synchronisé via `player:update`.
+  - Verrouillage des éléments initiaux: si vous avez choisi un personnage préfait, les objets/compétences issus du template sont marqués `locked: true` et ne peuvent pas être édités/supprimés par le joueur. Vous pouvez ajouter des éléments non verrouillés et les supprimer librement.
 - Jets de dés (`src/components/DiceRoller.jsx`):
   - Boutons rapides (d4..d100), nombre de dés, libellé.
   - Application auto de bonus/malus (indices) au prochain jet.
@@ -122,6 +126,14 @@ Côté mobile: UI pensée en mobile-first (stack 1 colonne, textes qui wrap, mé
   - Vibreur: battements de coeur continus pour un ou plusieurs joueurs, BPM 50–160, démarrer/arrêter sans perturber le reste de l’expérience.
   - Indices: cible, type (bonus/malus), valeur, durée.
 - Dice Roller / Presence / Chat accessibles comme pour les joueurs.
+
+Tableau de bord Personnages (`/gm/characters`)
+- Page dédiée: `src/pages/GMCharacters.jsx` (lien « Persos » dans l’entête MJ)
+- Visualisation et édition rapides pour chaque joueur:
+  - PV/Argent/Force/Intelligence/Agilité
+  - Inventaire (ajout/édition/suppression)
+  - Compétences (ajout/édition/suppression)
+- Les éléments « verrouillés » (issus d’un template) sont indiqués par un cadenas; le MJ peut néanmoins les éditer/supprimer si nécessaire.
 
 Disposition desktop: grille 2 colonnes (sur >= 1024px) pour un poste MJ confortable.
 

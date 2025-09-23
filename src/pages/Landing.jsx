@@ -26,7 +26,7 @@ export default function Landing() {
       if (o?.price != null) extras.push(`Prix: ${o.price}`);
       if (o?.usageLimit != null) extras.push(`Usage: ${o.usageLimit}`);
       const desc = [base, extras.join(' — ')].filter(Boolean).join('\n');
-      return { name: (o?.name || '').toString(), description: desc };
+      return { name: (o?.name || '').toString(), description: desc, locked: true };
     });
   };
 
@@ -35,7 +35,7 @@ export default function Landing() {
     return items.map((s) => {
       const base = (s?.description || '').toString();
       const extra = s?.effect ? `\nEffet: ${s.effect}` : '';
-      return { name: (s?.name || '').toString(), description: `${base}${extra}`.trim() };
+      return { name: (s?.name || '').toString(), description: `${base}${extra}`.trim(), locked: true };
     });
   };
 

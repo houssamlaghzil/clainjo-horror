@@ -49,6 +49,8 @@ export function RealtimeProvider({ children }) {
   const [hintBubble, setHintBubble] = useState(null); // { id, kind, value, expiresAt }
   // background haptics (e.g., heartbeat)
   const [haptics, setHaptics] = useState({ active: false, pattern: null, bpm: null, ts: 0 });
+  // my socket id
+  const [myId, setMyId] = useState('');
 
   // Wizard Battle state
   const [wizardActive, setWizardActive] = useState(false);
@@ -96,8 +98,22 @@ export function RealtimeProvider({ children }) {
 
     // presence
     s.on('presence:update', (payload) => {
-      setPlayers(payload.players || []);
+      const ps = payload.players || [];
+      setPlayers(ps);
       setGms(payload.gms || []);
+      // If we know our socketId, sync our own character fields to reflect GM edits
+      if (myId) {
+        const me = ps.find((p) => p.socketId === myId);
+        if (me) {
+          if (typeof me.hp === 'number') setHp(me.hp);
+          if (typeof me.money === 'number') setMoney(me.money);
+          if (Array.isArray(me.inventory)) setInventory(me.inventory);
+          if (typeof me.strength === 'number') setStrength(me.strength);
+          if (typeof me.intelligence === 'number') setIntelligence(me.intelligence);
+          if (typeof me.agility === 'number') setAgility(me.agility);
+          if (Array.isArray(me.skills)) setSkills(me.skills);
+        }
+      }
     });
 
     // init state
@@ -107,6 +123,7 @@ export function RealtimeProvider({ children }) {
       if (payload.diceLog) setDiceLog(payload.diceLog);
       if (payload.you) {
         const y = payload.you;
+        if (y.socketId) setMyId(y.socketId);
         if (typeof y.hp === 'number') setHp(y.hp);
         if (typeof y.money === 'number') setMoney(y.money);
         if (Array.isArray(y.inventory)) setInventory(y.inventory);
@@ -223,6 +240,14 @@ export function RealtimeProvider({ children }) {
     if (!roomId) return;
     const justJoined = ensureJoin();
     const emit = () => socketRef.current?.emit('dice:roll', { roomId, sides, count, label });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
+  // GM: update any player's character sheet
+  const gmUpdatePlayer = useCallback(({ target, hp, money, inventory, strength, intelligence, agility, skills }) => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('gm:player:update', { roomId, target, hp, money, inventory, strength, intelligence, agility, skills });
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
@@ -394,8 +419,9 @@ export function RealtimeProvider({ children }) {
     wizardPublish,
     sendHapticsStart,
     sendHapticsStop,
+    gmUpdatePlayer,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop]);
+  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer]);
 
   return (
     <RealtimeContext.Provider value={value}>

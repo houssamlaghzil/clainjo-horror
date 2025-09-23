@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import PresenceList from '../components/PresenceList.jsx';
 import DiceRoller from '../components/DiceRoller.jsx';
 import Chat from '../components/Chat.jsx';
@@ -23,6 +24,7 @@ export default function GM() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ color: connected ? 'green' : 'red' }}>{connected ? 'Connecté' : 'Déconnecté'}</span>
           <button onClick={enableImmersive}>Activer mode immersif</button>
+          <Link to="/gm/characters"><button>Persos</button></Link>
         </div>
       </header>
       <div className="gm-grid">

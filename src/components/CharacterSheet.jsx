@@ -19,12 +19,13 @@ export default function CharacterSheet() {
       if (typeof it === 'string') return { name: it, description: '' };
       const name = (it?.name ?? '').toString();
       const description = (it?.description ?? '').toString();
-      return { name, description };
+      const locked = !!it?.locked;
+      return { name, description, locked };
     });
   }, []);
 
   const [invList, setInvList] = useState(normalizeInventory(inventory));
-  const [skillsList, setSkillsList] = useState(Array.isArray(skills) ? skills.map((s) => ({ name: (s?.name ?? '').toString(), description: (s?.description ?? '').toString() })) : []);
+  const [skillsList, setSkillsList] = useState(Array.isArray(skills) ? skills.map((s) => ({ name: (s?.name ?? '').toString(), description: (s?.description ?? '').toString(), locked: !!s?.locked })) : []);
 
   // collapsible subsections
   const [invCollapsed, setInvCollapsed] = useState(false);
@@ -37,23 +38,31 @@ export default function CharacterSheet() {
   useEffect(() => { setIntEdit(intelligence ?? 0); }, [intelligence]);
   useEffect(() => { setAgiEdit(agility ?? 0); }, [agility]);
   useEffect(() => { setInvList(normalizeInventory(inventory)); }, [inventory, normalizeInventory]);
-  useEffect(() => { setSkillsList(Array.isArray(skills) ? skills.map((s) => ({ name: (s?.name ?? '').toString(), description: (s?.description ?? '').toString() })) : []); }, [skills]);
+  useEffect(() => { setSkillsList(Array.isArray(skills) ? skills.map((s) => ({ name: (s?.name ?? '').toString(), description: (s?.description ?? '').toString(), locked: !!s?.locked })) : []); }, [skills]);
 
   const addInv = () => setInvList((l) => [...l, { name: '', description: '' }]);
   const removeInv = (idx) => setInvList((l) => l.filter((_, i) => i !== idx));
-  const editInv = (idx, field, value) => setInvList((l) => l.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+  const editInv = (idx, field, value) => setInvList((l) => l.map((it, i) => {
+    if (i !== idx) return it;
+    if (it.locked) return it; // cannot edit locked template items
+    return { ...it, [field]: value };
+  }));
 
   const addSkill = () => setSkillsList((l) => [...l, { name: '', description: '' }]);
   const removeSkill = (idx) => setSkillsList((l) => l.filter((_, i) => i !== idx));
-  const editSkill = (idx, field, value) => setSkillsList((l) => l.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+  const editSkill = (idx, field, value) => setSkillsList((l) => l.map((it, i) => {
+    if (i !== idx) return it;
+    if (it.locked) return it; // cannot edit locked template skills
+    return { ...it, [field]: value };
+  }));
 
   const save = (e) => {
     e.preventDefault();
     const inv = invList
-      .map((it) => ({ name: (it.name || '').trim(), description: (it.description || '').trim() }))
+      .map((it) => ({ name: (it.name || '').trim(), description: (it.description || '').trim(), locked: !!it.locked }))
       .filter((it) => it.name.length > 0);
     const skl = skillsList
-      .map((it) => ({ name: (it.name || '').trim(), description: (it.description || '').trim() }))
+      .map((it) => ({ name: (it.name || '').trim(), description: (it.description || '').trim(), locked: !!it.locked }))
       .filter((it) => it.name.length > 0);
     updatePlayer({
       hp: Number(hpEdit),
@@ -98,10 +107,14 @@ export default function CharacterSheet() {
             {invList.map((it, idx) => (
               <div key={idx} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr', background: 'var(--bg-2)', borderRadius: 10, padding: 10 }}>
                 <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
-                  <input placeholder="Nom de l'objet" value={it.name} onChange={(e) => editInv(idx, 'name', e.target.value)} />
-                  <button type="button" onClick={() => removeInv(idx)} style={{ background: '#3c1111' }}>Supprimer</button>
+                  <input placeholder="Nom de l'objet" value={it.name} onChange={(e) => editInv(idx, 'name', e.target.value)} disabled={!!it.locked} />
+                  {it.locked ? (
+                    <span title="Élément d'origine (verrouillé)" style={{ opacity: 0.8 }}>🔒</span>
+                  ) : (
+                    <button type="button" onClick={() => removeInv(idx)} style={{ background: '#3c1111' }}>Supprimer</button>
+                  )}
                 </div>
-                <textarea rows={3} placeholder="Description" value={it.description} onChange={(e) => editInv(idx, 'description', e.target.value)} />
+                <textarea rows={3} placeholder="Description" value={it.description} onChange={(e) => editInv(idx, 'description', e.target.value)} disabled={!!it.locked} />
               </div>
             ))}
             <button type="button" onClick={addInv} style={{ background: '#101010' }}>+ Ajouter un objet</button>
@@ -113,10 +126,14 @@ export default function CharacterSheet() {
             {skillsList.map((it, idx) => (
               <div key={idx} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr', background: 'var(--bg-2)', borderRadius: 10, padding: 10 }}>
                 <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
-                  <input placeholder="Nom de la compétence" value={it.name} onChange={(e) => editSkill(idx, 'name', e.target.value)} />
-                  <button type="button" onClick={() => removeSkill(idx)} style={{ background: '#3c1111' }}>Supprimer</button>
+                  <input placeholder="Nom de la compétence" value={it.name} onChange={(e) => editSkill(idx, 'name', e.target.value)} disabled={!!it.locked} />
+                  {it.locked ? (
+                    <span title="Compétence d'origine (verrouillée)" style={{ opacity: 0.8 }}>🔒</span>
+                  ) : (
+                    <button type="button" onClick={() => removeSkill(idx)} style={{ background: '#3c1111' }}>Supprimer</button>
+                  )}
                 </div>
-                <textarea rows={3} placeholder="Description" value={it.description} onChange={(e) => editSkill(idx, 'description', e.target.value)} />
+                <textarea rows={3} placeholder="Description" value={it.description} onChange={(e) => editSkill(idx, 'description', e.target.value)} disabled={!!it.locked} />
               </div>
             ))}
             <button type="button" onClick={addSkill} style={{ background: '#101010' }}>+ Ajouter une compétence</button>
