@@ -85,6 +85,7 @@ Côté mobile: UI pensée en mobile-first (stack 1 colonne, textes qui wrap, mé
   - Activer/désactiver, forcer résolution, relancer IA, éditer les résultats par joueur, publier.
 - Contrôles MJ (`src/components/GMControls.jsx`):
   - Screamers: sélection de cibles, type de screamer, intensité (0..1).
+  - Vibreur: battements de coeur continus pour un ou plusieurs joueurs, BPM 50–160, démarrer/arrêter sans perturber le reste de l’expérience.
   - Indices: cible, type (bonus/malus), valeur, durée.
 - Dice Roller / Presence / Chat accessibles comme pour les joueurs.
 
@@ -107,6 +108,10 @@ Côté serveur: `server/index.js`
 - Screamer
   - `screamer:send` (GM -> serveur)
   - `screamer:trigger` (serveur -> joueurs ciblés)
+- Haptics (vibreur)
+  - `haptics:start` (GM -> serveur): `{ roomId, targets = 'all' | string|string[], pattern = 'heartbeat', bpm = 50..160 }`
+  - `haptics:stop` (GM -> serveur): `{ roomId, targets = 'all' | string|string[] }`
+  - Diffusion serveur -> joueurs ciblés: `haptics:start` `{ pattern: 'heartbeat', bpm }`, `haptics:stop`
 - Indices
   - `hint:send` (GM -> serveur)
   - `hint:notify` (serveur -> joueur)
@@ -155,6 +160,13 @@ Côté client — Screamer (`src/components/ScreamerOverlay.jsx`)
   - Courbe: `s = intensity^2.2` (modulable)
 - Synthèse WebAudio: fréquences, gains, bruit, filtre (voir constantes `OSC*`, `NOISE_*`)
 
+Côté client — Vibreur continu (`src/components/HapticsManager.jsx`)
+- Monté globalement dans `src/App.jsx` (pas d’UI)
+- Écoute `haptics:start` / `haptics:stop` via l’état exposé par `RealtimeProvider`
+- Pattern actuel: `heartbeat` (deux taps « lub-dub ») calé sur le BPM demandé
+- Range BPM validée côté serveur et client: 50..160
+- N’interfère pas avec l’UI; appels réguliers à `navigator.vibrate()` non bloquants
+
 Côté client — Contrôles MJ (`src/components/GMControls.jsx`)
 - `DEFAULT_SCREAMER_INTENSITY = 0.8`
 
@@ -181,6 +193,8 @@ Thème / Layout
 - Éviter les largeurs fixes; privilégier flex-wrap/grid et `max-width: 100%`
 - Les médias (`img`, `video`, etc.) sont contraints à `max-width: 100%`
 - La vibration est ignorée si non supportée/bloquée (iOS)
+  - Android/Chrome: `navigator.vibrate()` est supporté, mais peut exiger une interaction utilisateur préalable (ex.: un tap). L’app déclenche déjà de la vibration via les screamers; une interaction récente facilite l’autorisation.
+  - iOS/Safari: l’API Vibration n’est pas supportée; les battements ne se feront pas sentir. L’UX reste intacte sur ces appareils.
 
 ---
 

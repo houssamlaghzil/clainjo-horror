@@ -4,12 +4,14 @@ import Player from './pages/Player.jsx'
 import GM from './pages/GM.jsx'
 import ScreamerOverlay from './components/ScreamerOverlay.jsx'
 import HintBubble from './components/HintBubble.jsx'
+import HapticsManager from './components/HapticsManager.jsx'
 import './App.css'
 
 function App() {
   return (
     <div>
       <HintBubble />
+      <HapticsManager />
       <ScreamerOverlay />
       <Routes>
         <Route path="/" element={<Landing />} />

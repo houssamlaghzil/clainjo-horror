@@ -7,7 +7,6 @@ export const SCREAMER_TYPES = [
   { value: 'default', label: 'Default' },
   { value: 'ghost', label: 'Ghost' },
   { value: 'shriek', label: 'Shriek' },
-  { value: 'heartbeat', label: 'Heartbeat' },
 ];
 
 export default function GMControls() {
@@ -21,6 +20,8 @@ export default function GMControls() {
   const [hintKind, setHintKind] = useState('bonus'); // 'bonus' | 'malus'
   const [hintValue, setHintValue] = useState(2);
   const [hintDuration, setHintDuration] = useState(5000);
+
+  // no haptics state here — dedicated panel HapticsGM.jsx handles it
 
   const playerOptions = useMemo(() => players.map((p) => ({ value: p.socketId, label: p.name || p.socketId.slice(0, 4) })), [players]);
 
@@ -100,8 +101,6 @@ export default function GMControls() {
         </label>
         <button type="submit" style={{ backgroundColor: '#8b0000', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Envoyer</button>
       </form>
-
-      <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '12px 0' }} />
 
       <h3>Contrôles MJ — Indices (bonus/malus)</h3>
       <form onSubmit={onSendHint} style={{ display: 'grid', gap: 8 }}>

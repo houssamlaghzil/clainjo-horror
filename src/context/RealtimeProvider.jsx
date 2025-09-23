@@ -43,6 +43,8 @@ export function RealtimeProvider({ children }) {
   const [chat, setChat] = useState([]);
   const [serverVersion, setServerVersion] = useState('');
   const [hintBubble, setHintBubble] = useState(null); // { id, kind, value, expiresAt }
+  // background haptics (e.g., heartbeat)
+  const [haptics, setHaptics] = useState({ active: false, pattern: null, bpm: null, ts: 0 });
 
   // Wizard Battle state
   const [wizardActive, setWizardActive] = useState(false);
@@ -110,6 +112,16 @@ export function RealtimeProvider({ children }) {
     s.on('screamer:trigger', ({ id = 'default', intensity = 0.8, imageUrl, soundUrl }) => {
       // Let ScreamerOverlay handle audio + haptics centrally
       setScreamer({ id, intensity, imageUrl, soundUrl, ts: Date.now() });
+    });
+
+    // haptics control (GM -> players)
+    s.on('haptics:start', ({ pattern = 'heartbeat', bpm = 60 }) => {
+      const b = Math.max(50, Math.min(160, Number(bpm) || 60));
+      setHaptics({ active: true, pattern, bpm: b, ts: Date.now() });
+    });
+    s.on('haptics:stop', () => {
+      setHaptics({ active: false, pattern: null, bpm: null, ts: Date.now() });
+      try { navigator.vibrate(0); } catch (_) {}
     });
 
     // hint bubble notification from server (GM -> player)
@@ -219,6 +231,21 @@ export function RealtimeProvider({ children }) {
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
+  // GM: start/stop background haptics for selected players
+  const sendHapticsStart = useCallback(({ targets = 'all', pattern = 'heartbeat', bpm = 60 }) => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('haptics:start', { roomId, targets, pattern, bpm });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
+  const sendHapticsStop = useCallback(({ targets = 'all' } = {}) => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('haptics:stop', { roomId, targets });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
   // GM: send a hint to a single player
   const sendHint = useCallback(({ target, kind = 'bonus', value = 0, durationMs = 5000 }) => {
     if (!roomId) return;
@@ -306,6 +333,9 @@ export function RealtimeProvider({ children }) {
     // screamer
     screamer, setScreamer,
 
+    // haptics
+    haptics,
+
     // hint bubble
     hintBubble, setHintBubble,
 
@@ -335,8 +365,10 @@ export function RealtimeProvider({ children }) {
     wizardGet,
     wizardManual,
     wizardPublish,
+    sendHapticsStart,
+    sendHapticsStop,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, players, gms, diceLog, chat, serverVersion, screamer, hintBubble, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardManual, wizardPublish]);
+  }), [connected, roomId, role, name, hp, money, inventory, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop]);
 
   return (
     <RealtimeContext.Provider value={value}>

@@ -244,6 +244,45 @@ io.on('connection', (socket) => {
     }
   });
 
+  // GM starts targeted haptics (e.g., heartbeat) on selected players' devices
+  socket.on('haptics:start', ({ roomId, targets = 'all', pattern = 'heartbeat', bpm = 60 }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    // only GM may control haptics
+    if (!room.gms.has(socket.id)) return;
+
+    const safePattern = (pattern === 'heartbeat') ? 'heartbeat' : 'heartbeat';
+    let b = Number(bpm || 60);
+    if (!Number.isFinite(b)) b = 60;
+    b = Math.max(50, Math.min(160, Math.round(b)));
+
+    const payload = { pattern: safePattern, bpm: b };
+    if (targets === 'all') {
+      for (const [sid] of room.players) {
+        io.to(sid).emit('haptics:start', payload);
+      }
+    } else {
+      const list = Array.isArray(targets) ? targets : [targets];
+      list.forEach((sid) => io.to(sid).emit('haptics:start', payload));
+    }
+  });
+
+  // GM stops haptics on selected players
+  socket.on('haptics:stop', ({ roomId, targets = 'all' }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    if (!room.gms.has(socket.id)) return;
+
+    if (targets === 'all') {
+      for (const [sid] of room.players) {
+        io.to(sid).emit('haptics:stop');
+      }
+    } else {
+      const list = Array.isArray(targets) ? targets : [targets];
+      list.forEach((sid) => io.to(sid).emit('haptics:stop'));
+    }
+  });
+
   // GM requests current state
   socket.on('state:get', ({ roomId }) => {
     const room = rooms.get(roomId);

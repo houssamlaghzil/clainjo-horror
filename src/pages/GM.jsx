@@ -4,6 +4,7 @@ import DiceRoller from '../components/DiceRoller.jsx';
 import Chat from '../components/Chat.jsx';
 import GMControls from '../components/GMControls.jsx';
 import WizardGM from '../components/WizardGM.jsx';
+import HapticsGM from '../components/HapticsGM.jsx';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 import { useDeviceGuards } from '../hooks/useDeviceGuards.js';
 
@@ -27,6 +28,7 @@ export default function GM() {
       <div className="gm-grid">
         <WizardGM />
         <GMControls />
+        <HapticsGM />
         <PresenceList />
         <DiceRoller />
         <div style={{ height: 240 }}>
