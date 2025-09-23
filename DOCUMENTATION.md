@@ -71,6 +71,8 @@ Note: `docker-compose.yml` charge automatiquement `.env` via `env_file`.
   - Application auto de bonus/malus (indices) au prochain jet.
 - Chat (`src/components/Chat.jsx`):
   - Fil chronologique, envoi de messages texte.
+- Sections repliables: chaque panneau (Fiche, Dés, Participants, Chat) peut être réduit à une seule ligne via un en-tête cliquable.
+- Mode Écran noir (économie batterie): bouton flottant en haut à droite qui replie toutes les sections et superpose un fond noir plein écran. Ce fond n’intercepte pas les clics (`pointer-events: none`) et ne masque pas les overlays critiques.
 - Screamer Overlay (`src/components/ScreamerOverlay.jsx`):
   - Plein écran image/son, vibration paramétrée selon l’intensité (non linéaire pour accentuer 0 vs 1).
 - Wizard Battle Player (`src/components/WizardPlayer.jsx`):
@@ -195,6 +197,7 @@ Thème / Layout
 - La vibration est ignorée si non supportée/bloquée (iOS)
   - Android/Chrome: `navigator.vibrate()` est supporté, mais peut exiger une interaction utilisateur préalable (ex.: un tap). L’app déclenche déjà de la vibration via les screamers; une interaction récente facilite l’autorisation.
   - iOS/Safari: l’API Vibration n’est pas supportée; les battements ne se feront pas sentir. L’UX reste intacte sur ces appareils.
+- Z-index: `ScreamerOverlay` (z-index 9999) > `HintBubble` (9998) > bouton flottant du mode Écran noir (~9991) > fond noir (~9000). Les overlays restent donc toujours visibles et cliquables.
 
 ---
 
