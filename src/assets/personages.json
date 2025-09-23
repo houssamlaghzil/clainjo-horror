@@ -1,0 +1,306 @@
+[
+  {
+    "id": "0e70b1bd-2152-4ba4-a89a-6e747deaea2a",
+    "name": "Dévonna Valtheris ",
+    "height": 180,
+    "weight": 70,
+    "body_type": "moyenne",
+    "description": "Âge: 19 ans \n\nUnivers d'origine : \n\nLa Cité oubliée de Nocthaven, isolé du reste du monde par un voile magique qui bloque la lumière du soleil, elle est plongé dans un crépuscule éternel.\n Dévonna fait partie des \"Enfants de l'ombre\", destinés à être sacrifiés pour le rituel obscur du roi de la cité, ils ont hérité d'une affinité avec l'ombre et le sang après que celui-ci est échoué.\n\nTemporalité: \nAnnée 1615 dans son univers qui correspond à la période des Nuits Sépulcrales, une ère où le temps semblait suspendu sans lumière du jour et où des créatures dangereuses erraients en quête de chair.",
+    "strength": 5,
+    "intelligence": 11,
+    "health": 9,
+    "gold": 0,
+    "skill_points": 0,
+    "objects": [
+      {
+        "id": "whisper_needle_010",
+        "name": "Whisper Needle",
+        "tier": "low",
+        "price": 45,
+        "damage": "Dégâts légers avec lien sanguin",
+        "blocking": 2,
+        "usageLimit": 10,
+        "description": "Le Whisper Needle, une aiguille de lancer en alliage de titane fragile, est gravée de runes archaïques. Même si ses dégâts sont modestes, sa piqûre infuse un lien sanguin temporaire entre le porteur et la victime, permettant une communication psychique limitée. Simple dans sa conception mais utile pour des missions d'infiltration nécessitant un contact instantané, son prix bas reflète un usage restreint et un potentiel tactique équilibré."
+      },
+      {
+        "id": "arcane_bracelet",
+        "name": "Bracelet Arcanique",
+        "tier": "low",
+        "price": 40,
+        "damage": "Déviation basique",
+        "blocking": 60,
+        "usageLimit": 30,
+        "description": "Un bracelet simple mais efficace pour les aventuriers cherchant une protection supplémentaire modeste. En canalisant une barrière de mana, il permet de dévier les attaques élémentaires faibles. Un choix équilibré pour seulement 40 or, idéal pour les explorations moins périlleuses."
+      },
+      {
+        "id": "3f2135d0",
+        "name": "Kinetic Edge",
+        "tier": "low",
+        "price": 47,
+        "damage": "Rapid slash - successive light damage",
+        "blocking": 0,
+        "usageLimit": 1000,
+        "description": "Conçue pour ceux en quête de rapidité, la Kinetic Edge est une lame vibratoire qui explore la vitesse pour compenser son faible pouvoir destructeur. En balance parfaite, elle exécute des frappes fulgurantes, chaque coup accroissant la fréquence des oscillations pour éroder les défenses adverses. Avec un coût de 47 or, son utilisation se veut fréquente, idéale pour les combattants privilégiant l'agilité sur la brutalité."
+      },
+      {
+        "id": "unique_low_01",
+        "name": "Tisane Régénératrice",
+        "tier": "low",
+        "price": 20,
+        "damage": "Restaure 20% des PV",
+        "blocking": 0,
+        "usageLimit": 5,
+        "description": "Infusée avec des herbes aux propriétés magiques, cette tisane offre des capacités de régénération basiques mais appréciables. Économique et facilement stockable, elle permet des soins d'appoint lors de vos explorations les plus courantes."
+      },
+      {
+        "id": "amulette_soleil_001",
+        "name": "Amulette Protectrice du Soleil",
+        "tier": "low",
+        "price": 20,
+        "damage": "Neutralisation passive des rayons solaires",
+        "blocking": 35,
+        "usageLimit": 25,
+        "description": "Cette amulette gravée de glyphes solaires crée un champ d’aura dorée autour du porteur vampire, atténuant efficacement les effets nocifs de la lumière du jour. Son énergie se recharge lentement à chaque aube, offrant une protection modérée mais fiable pour 25 utilisations avant nécessiter une réactivation magique."
+      }
+    ],
+    "skills": [
+      {
+        "id": "shade_step01",
+        "cost": 10,
+        "name": "Pas de la Pénombre",
+        "tier": "low",
+        "effect": "Permet de se déplacer sur une courte distance entre deux petites ombres visibles",
+        "rarity": "commune",
+        "description": "Le 'Pas de la Pénombre' offre une mobilité basique en utilisant la magie des ombres. Cette compétence vous permet de fusionner momentanément avec les ombres proches et de vous téléporter brièvement sur une distance limitée (jusqu'à 10 mètres) entre deux zones ombragées. Elle est idéale pour se faufiler discrètement ou esquiver des attaques dans un environnement urbain."
+      },
+      {
+        "id": "mn1-001",
+        "cost": 10,
+        "name": "Murmure de Vérité",
+        "tier": "low",
+        "effect": "Force la cible à admettre une vérité mineure",
+        "rarity": "commune",
+        "description": "Cette compétence utilise une forme légère de magie mentale pour influencer la cible à admettre une vérité généralement anodine. Idéale pour des situations de peu d'importance ou démêler de simples mensonges. Grâce à une combinaison de chants mystiques et d'implants neuraux, l'utilisateur insinue subtilement un besoin irrésistible de dire la vérité, tant que celle-ci n'est pas profondément protégée par la psyché de la cible. En raison de sa portée limitée, le coût est raisonnable."
+      },
+      {
+        "id": "skill002",
+        "cost": 20,
+        "name": "Rituel de Puissance Sanguine",
+        "tier": "standard",
+        "effect": "Multiplie par deux l'effet des sorts pour une durée déterminée en utilisant une quantité plus importante de sang.",
+        "rarity": "commune",
+        "description": "En canalisant beaucoup plus de sang, ce rituel ouvre des voies mystiques entre le tangible et l'astral, doublant la puissance de tes sorts. Bien que l'impact sur les points de vie soit considérable, la maîtrise de cette compétence dans un combat serré peut renverser des situations désespérées. Un coût en points de compétence justifié par son potentiel stratégique en situations critiques."
+      }
+    ],
+    "created_at": "2025-08-05T11:39:56.497Z",
+    "agility": 10
+  },
+  {
+    "id": "139c5ad1-d19a-4ff7-af7f-36d933cf6f17",
+    "name": "Braunome",
+    "height": 165,
+    "weight": 65,
+    "body_type": "moyenne",
+    "description": "Androide/I.A. à forme humaine. Créé par les ruptarius, faite principalement pour accompagner et défendre les équipes humaines liées à clainjo. Fait un bon tank et peux prendre les blessures des autres, mais bien que sa constitution soit très résistante, la force physique de l'androïde est basse pour éviter qu'en cas de corruption/déviance elle ne fasse trop de dégât. ",
+    "strength": 5,
+    "intelligence": 14,
+    "health": 20,
+    "gold": 0,
+    "skill_points": 0,
+    "objects": [
+      {
+        "id": "med_rare01",
+        "name": "Hélios Techmed",
+        "tier": "rare",
+        "price": 160,
+        "damage": "Expert en biocircuiterie régénérative",
+        "blocking": 80,
+        "usageLimit": "infinite",
+        "description": "Hélios Techmed allie technologie avancée et compétences médicales pour offrir une expertise en biocircuiterie régénérative. Capable de réparer des tissus endommagés et de booster la régénération cellulaire avec ses implants biomécaniques, il assure une récupération efficace et rapide. Sa loyauté est remarquable, bien qu'avec un coût d'entretien régulier lié à ses cyber-implants. Adapté aux aventures nécessitant une force médicale stable sur le long terme, sans le déséquilibre d’un personnage légendaire."
+      }
+    ],
+    "skills": [
+      {
+        "id": "ally_boost_ultimate",
+        "cost": 5,
+        "name": "Interface de Synergie Ultime",
+        "tier": "low",
+        "effect": "Augmente temporairement les capacités des alliés, accroissant toutes leurs statistiques de 50%.",
+        "rarity": "commune",
+        "description": "'Interface de Synergie Ultime' est un mécanisme légendaire dérivant des reliques mystiques et des technologies de pointe. Elle agit comme un catalyseur temporaire, suralimentant les potentiels latents des alliés. Cependant, le coût exorbitant et l'énergie nécessaire pour maintenir cet état de surcapacité en font une compétence en or massif, circonscrite aux élites des combats d'équipe."
+      },
+      {
+        "id": "defense_max75",
+        "cost": 20,
+        "name": "Bouclier de Résonance",
+        "tier": "premium",
+        "effect": "Réduit jusqu'à 75% des dégâts reçus, avec un temps de récupération élevé entre les utilisations.",
+        "rarity": "commune",
+        "description": "La compétence 'Bouclier de Résonance' enveloppe le joueur dans un champ de force résonant d'énergie mystico-tech. Bien que cette barrière réduise efficacement les dégâts subis, elle nécessite une réanimation énergétique longue. Initialement conçue par Techmancers pour faire face aux menaces de dimensions parallèles, elle est prisée par ceux qui naviguent des ruelles obscures des mégalopoles."
+      },
+      {
+        "id": "resolution_ai_assist",
+        "cost": 5,
+        "name": "Assistant d'Analyse Cybernétique",
+        "tier": "standard",
+        "effect": "Analyse les situations complexes et propose des solutions logiques avec l'aide d'une IA.",
+        "rarity": "commune",
+        "description": "'Assistant d'Analyse Cybernétique' utilise une intelligence artificielle hautement performante pour disséquer les problèmes et proposer des solutions en temps réel. Un outil indispensable pour les hackers et stratèges urbains cherchant à déjouer les plans complexes ou infiltrer des cyber-forteresses. Le coût réduit en fait une compétence accessible, même aux novices."
+      }
+    ],
+    "created_at": "2025-08-04T15:26:04.526Z",
+    "agility": 14
+  },
+  {
+    "id": "504fcad9-2732-4843-9fe8-e397d7c169bd",
+    "name": "Copper",
+    "height": 175,
+    "weight": 70,
+    "body_type": "moyenne",
+    "description": "Homme qui a vécu dans les mine à la recherche de tresor est c'est forgé le nom de copper. Avec le temps il a oublié son vrai nom, dommage",
+    "strength": 5,
+    "intelligence": 12,
+    "health": 13,
+    "gold": 0,
+    "skill_points": 0,
+    "objects": [
+      {
+        "id": "teleport_fruit_001",
+        "name": "Fruit du Démon, Téléportation",
+        "tier": "legendary",
+        "price": 192,
+        "damage": "Téléportation instantanée à des points connus sur n'importe quel plan économique ou astral.",
+        "blocking": 0,
+        "usageLimit": "infinite",
+        "description": "Ce fruit, issu des arcanes les plus mystérieux du cyberespace, confère à son utilisateur la capacité de se téléporter vers n'importe quel lieu qu'il peut visualiser ou dont il a déjà entendu parler. Utilisé par des forces mystiques et interdits, il transcende la simple magie par une infusion technomagique imbattable. En raison de sa puissance extraordinaire et de son potentiel de game-breaking, le prix de 192 or reflète une rare opportunité dans le monde des aventuriers, tout en restant accessible à ceux qui osent manipuler le tissu de l'espace-temps."
+      }
+    ],
+    "skills": [
+      {
+        "id": "skill_003",
+        "cost": 30,
+        "name": "Catalyseur Énigmatique",
+        "tier": "premium",
+        "effect": "Invoque un artefact très puissant mais aléatoire.",
+        "rarity": "commune",
+        "description": "Un haut niveau de magie et d'ingénierie se conjuguent pour déstabiliser la trame même de la réalité, afin d'attirer à vous des artefacts aux pouvoirs démesurés. Cette compétence tapisse le chemin de la sagesse et de la folie avec un coût maximal de 30 points de compétence, refreinant son utilisation tout en exploitant la potentialité extrême des résultats."
+      }
+    ],
+    "created_at": "2025-08-04T14:13:16.531Z",
+    "agility": 13
+  },
+  {
+    "id": "85a94f2a-ef75-49f1-93f0-2d142f0b4007",
+    "name": "SuperMoi",
+    "height": 121,
+    "weight": 65,
+    "body_type": "moyenne",
+    "description": "SuperMoi est un ancien nain de jardin qui est venu à la vie grâce à un caca de mouette magique. Du fait d'avoir été un nain de jardin roue de coup de pied au pire, ignoré au mieux, SuperMoi a une grande capacité de discrétion et d'écoute cependant il est aussi souple qu'un caillou",
+    "strength": 12,
+    "intelligence": 11,
+    "health": 6,
+    "gold": 24,
+    "skill_points": 0,
+    "objects": [
+      {
+        "id": "mouette002",
+        "name": "Mouette des Tempêtes Numériques",
+        "tier": "rare",
+        "price": 160,
+        "damage": "Manipulation Climatique, Interruption Numérique",
+        "blocking": 50,
+        "usageLimit": "infinite",
+        "description": "Issue des tempêtes magnéto-électriques qui affligent la toile cybernétique, cette mouette a évolué pour contrôler et manipuler les climats numériques. Son vol peut perturber les connexions réseau et son cri déclencher des tempêtes de données. Avec une loyauté à 75%, elle suit ses alliés dans les tempêtes avec une détermination rare. Elle est évaluée à 160 pièces d'or pour sa polyvalence en terrains numériques."
+      }
+    ],
+    "skills": [
+      {
+        "id": "aural_hacker",
+        "cost": 30,
+        "name": "Aural Hacker",
+        "tier": "standard",
+        "effect": "Infiltre les barrières sonores pour écouter à travers des murs upgradés.",
+        "rarity": "commune",
+        "description": "En s'harmonisant avec les fluctuations électromagnétiques des barrières sonores modernes, l'utilisateur peut infiltrer les parois subsoniques des habitations et commerçants. La compétence est équilibrée pour offrir un avantage technologique tangible sans pour autant outrepasser la discrimination de base des appareils de sécurité sonore, justifiant ainsi sa tarification standard mais puissante."
+      }
+    ],
+    "created_at": "2025-08-04T19:11:02.130Z",
+    "agility": 13
+  },
+  {
+    "id": "a5c30d3e-5814-49a5-89f5-2540feeac9b1",
+    "name": "Camille",
+    "height": 170,
+    "weight": 55,
+    "body_type": "moyenne",
+    "description": "Âgée de 23 ans, je suis championne de France de boxe française, malgré mon faible niveau de force (8), je sais manier les coups de pieds comme personne ! Comme quoi ce n'est pas la force le plus important mais la technique !\nJ'aime danser donc cela m'a aidé à développer mon agilité et ma coordination.",
+    "strength": 8,
+    "intelligence": 12,
+    "health": 17,
+    "gold": 4,
+    "skill_points": 0,
+    "objects": [
+      {
+        "id": "unique_id3",
+        "name": "Charme de Givre",
+        "tier": "low",
+        "price": 45,
+        "damage": "Diminution temporaire de la température corporelle ennemie, ralentissant leurs mouvements",
+        "blocking": 2,
+        "usageLimit": 25,
+        "description": "Innovant bijou de glace infusé, le Charme de Givre est une parure resplendissante pour les aventuriers subtils, délivrée dans une esthétique glaciale. Issu des sages forgerons de la Coalition Arctique, cet artefact utilise l'amplification focale pour ralentir les adversaires en abaissant leur température interne. Évalué à 45 pièces d'or, il s'intègre parfaitement dans l'équipement de base, soutenant des manœuvres stratégiques efficaces."
+      },
+      {
+        "id": "gants003",
+        "name": "Gants de Boxe Basique",
+        "tier": "low",
+        "price": 25,
+        "damage": "Dégâts normaux",
+        "blocking": 50,
+        "usageLimit": "250 uses",
+        "description": "Simples mais efficaces, ces gants de boxe en néoprène amélioré offrent une ergonomie et une légèreté favorisant la maniabilité lors des combats. Avec un prix abordable de 25 or, ils sont parfaits pour les pugilistes débutants cherchant à faire leurs preuves dans les sous-sols sombres des mégalopoles."
+      },
+      {
+        "id": "item002",
+        "name": "Gants Hydrauliques",
+        "tier": "rare",
+        "price": 95,
+        "damage": "Augmente la force physique de 100%",
+        "blocking": 50,
+        "usageLimit": "100 uses",
+        "description": "Ces gants, équipés de pistons hydrauliques miniatures, permettent à l'utilisateur de déployer une force redoutable. Parfait pour des tâches répétitives, ils sont limités à 100 utilisations avant que leur réservoir de fluide hydraulique ne doive être rechargé, justifiant ainsi leur prix raisonnable pour leur puissance."
+      }
+    ],
+    "skills": [
+      {
+        "id": "chronomancy_field_002",
+        "cost": 15,
+        "name": "Champ de Dilatation",
+        "tier": "standard",
+        "effect": "Crée un champ temporel provoquant un ralentissement localisé des mouvements ennemis à portée.",
+        "rarity": "commune",
+        "description": "En générant un champ de discontinuum autour de votre position, vos adversaires subissent un ralentissement dans leurs mouvements, une astuce de chronomancie entraînant un effet de latence temporelle. Le coût de 15 points s'explique par la concentration et la précision requises pour maintenir cette perturbation interstitielle jusqu'à 15 secondes."
+      },
+      {
+        "id": "enhanced_endurance_02",
+        "cost": 10,
+        "name": "Endurance Améliorée",
+        "tier": "standard",
+        "effect": "Augmente significativement la force physique et la capacité de combat au corps à corps, réduisant la fatigue.",
+        "rarity": "commune",
+        "description": "Une infusion de bio-nanobots qui circule dans votre système, renforçant les cellules musculaires et assurant une régénération rapide en cas de dommage. Optimise le combat à mains nues tout en stabilisant la récupération post-combat. Un choix équilibré pour un guerrier aguerri."
+      },
+      {
+        "id": "psi_tech_001",
+        "cost": 5,
+        "name": "Neural Synchrony",
+        "tier": "low",
+        "effect": "Augmentation modérée de l'intelligence permettant une analyse rapide à une échelle personnelle.",
+        "rarity": "commune",
+        "description": "La synchronisation neuronale établit une connexion fluide entre vos neurones et les réseaux technologiques environnants. Cette compétence amplifie vos capacités intellectuelles de manière subtile mais perceptible, vous permettant de traiter les données avec une efficacité accrue lors de vos interactions personnelles. Coût basique justifié par des améliorations limitées mais constantes."
+      }
+    ],
+    "created_at": "2025-08-04T15:35:45.651Z",
+    "agility": 17
+  }
+]

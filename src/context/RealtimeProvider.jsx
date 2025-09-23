@@ -35,6 +35,10 @@ export function RealtimeProvider({ children }) {
   const [hp, setHp] = useState(10);
   const [money, setMoney] = useState(0);
   const [inventory, setInventory] = useState([]);
+  const [strength, setStrength] = useState(0);
+  const [intelligence, setIntelligence] = useState(0);
+  const [agility, setAgility] = useState(0);
+  const [skills, setSkills] = useState([]);
 
   // presence & logs
   const [players, setPlayers] = useState([]);
@@ -75,10 +79,11 @@ export function RealtimeProvider({ children }) {
       // Auto-restore session data if none in state
       const sess = loadSession();
       if (sess && !roomId) {
-        const { roomId: r, role: ro, name: nm, hp: hp0 = 10, money: m0 = 0, inventory: inv0 = [] } = sess;
+        const { roomId: r, role: ro, name: nm, hp: hp0 = 10, money: m0 = 0, inventory: inv0 = [], strength: s0 = 0, intelligence: iq0 = 0, agility: ag0 = 0, skills: sk0 = [] } = sess;
         if (r && ro && nm) {
           setRoomId(r); setRole(ro); setName(nm);
           setHp(hp0); setMoney(m0); setInventory(inv0);
+          setStrength(s0); setIntelligence(iq0); setAgility(ag0); setSkills(Array.isArray(sk0) ? sk0 : []);
         }
       }
     });
@@ -100,6 +105,16 @@ export function RealtimeProvider({ children }) {
       if (payload.players) setPlayers(payload.players);
       if (payload.gms) setGms(payload.gms);
       if (payload.diceLog) setDiceLog(payload.diceLog);
+      if (payload.you) {
+        const y = payload.you;
+        if (typeof y.hp === 'number') setHp(y.hp);
+        if (typeof y.money === 'number') setMoney(y.money);
+        if (Array.isArray(y.inventory)) setInventory(y.inventory);
+        if (typeof y.strength === 'number') setStrength(y.strength);
+        if (typeof y.intelligence === 'number') setIntelligence(y.intelligence);
+        if (typeof y.agility === 'number') setAgility(y.agility);
+        if (Array.isArray(y.skills)) setSkills(y.skills);
+      }
     });
 
     // chat
@@ -154,18 +169,22 @@ export function RealtimeProvider({ children }) {
     };
   }, [loadSession, roomId]);
 
-  const join = useCallback(({ roomId, role, name, hp = 10, money = 0, inventory = [] }) => {
+  const join = useCallback(({ roomId, role, name, hp = 10, money = 0, inventory = [], strength = 0, intelligence = 0, agility = 0, skills = [] }) => {
     setRoomId(roomId);
     setRole(role);
     setName(name);
     setHp(hp);
     setMoney(money);
     setInventory(inventory);
+    setStrength(strength);
+    setIntelligence(intelligence);
+    setAgility(agility);
+    setSkills(skills);
     // persist session for reload-resume
-    saveSession({ roomId, role, name, hp, money, inventory });
+    saveSession({ roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills });
     // Immediate emit if already connected; otherwise the effect below will handle it
     if (socketRef.current?.connected) {
-      socketRef.current.emit('join', { roomId, role, name, hp, money, inventory });
+      socketRef.current.emit('join', { roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills });
       lastJoinKeyRef.current = `${roomId}|${role}|${name}`;
     }
   }, [saveSession]);
@@ -177,9 +196,9 @@ export function RealtimeProvider({ children }) {
     if (!roomId || !role || !name) return;
     const key = `${roomId}|${role}|${name}`;
     if (lastJoinKeyRef.current === key) return; // already emitted for this identity
-    s.emit('join', { roomId, role, name, hp, money, inventory });
+    s.emit('join', { roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills });
     lastJoinKeyRef.current = key;
-  }, [connected, roomId, role, name, hp, money, inventory]);
+  }, [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills]);
 
   // Helper to ensure we have emitted join for the current identity
   const ensureJoin = useCallback(() => {
@@ -188,10 +207,10 @@ export function RealtimeProvider({ children }) {
     if (!roomId || !role || !name) return;
     const key = `${roomId}|${role}|${name}`;
     if (lastJoinKeyRef.current === key) return false;
-    s.emit('join', { roomId, role, name, hp, money, inventory });
+    s.emit('join', { roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills });
     lastJoinKeyRef.current = key;
     return true;
-  }, [roomId, role, name, hp, money, inventory]);
+  }, [roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills]);
 
   const sendChat = useCallback(({ text, to }) => {
     if (!roomId) return;
@@ -214,14 +233,18 @@ export function RealtimeProvider({ children }) {
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
-  const updatePlayer = useCallback(({ hp, money, inventory }) => {
+  const updatePlayer = useCallback(({ hp, money, inventory, strength, intelligence, agility, skills }) => {
     if (!roomId) return;
     const justJoined = ensureJoin();
-    const emit = () => socketRef.current?.emit('player:update', { roomId, hp, money, inventory });
+    const emit = () => socketRef.current?.emit('player:update', { roomId, hp, money, inventory, strength, intelligence, agility, skills });
     if (justJoined) setTimeout(emit, 50); else emit();
     if (typeof hp === 'number') setHp(hp);
     if (typeof money === 'number') setMoney(money);
     if (Array.isArray(inventory)) setInventory(inventory);
+    if (typeof strength === 'number') setStrength(strength);
+    if (typeof intelligence === 'number') setIntelligence(intelligence);
+    if (typeof agility === 'number') setAgility(agility);
+    if (Array.isArray(skills)) setSkills(skills);
   }, [roomId, ensureJoin]);
 
   const sendScreamer = useCallback(({ targets = 'all', screamerId = 'default', intensity = 0.8, imageUrl, soundUrl }) => {
@@ -320,6 +343,10 @@ export function RealtimeProvider({ children }) {
     hp, setHp,
     money, setMoney,
     inventory, setInventory,
+    strength, setStrength,
+    intelligence, setIntelligence,
+    agility, setAgility,
+    skills, setSkills,
 
     // presence & logs
     players,
@@ -368,7 +395,7 @@ export function RealtimeProvider({ children }) {
     sendHapticsStart,
     sendHapticsStop,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop]);
+  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop]);
 
   return (
     <RealtimeContext.Provider value={value}>

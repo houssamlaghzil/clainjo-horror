@@ -78,8 +78,19 @@ const socketToRoom = new Map();
 
 function sanitizePublicPlayer(p) {
   // limit data exposed to other players
-  const { socketId, name, hp = 0, money = 0, inventory = [], role = 'player' } = p;
-  return { socketId, name, hp, money, inventory, role };
+  const {
+    socketId,
+    name,
+    role = 'player',
+    hp = 0,
+    money = 0,
+    inventory = [], // Array<string|{ name, description }>
+    strength = 0,
+    intelligence = 0,
+    agility = 0,
+    skills = [], // Array<{ name, description }>
+  } = p;
+  return { socketId, name, role, hp, money, inventory, strength, intelligence, agility, skills };
 }
 
 // Socket.IO connection handlers
@@ -88,14 +99,14 @@ io.on('connection', (socket) => {
   socket.emit('server:meta', { version: APP_VERSION });
 
   // Client sends join with metadata
-  socket.on('join', ({ roomId, role, name, hp = 0, money = 0, inventory = [] }) => {
+  socket.on('join', ({ roomId, role, name, hp = 0, money = 0, inventory = [], strength = 0, intelligence = 0, agility = 0, skills = [] }) => {
     if (!roomId || !role || !name) return;
     const room = getOrCreateRoom(roomId);
 
     socket.join(roomId);
     socketToRoom.set(socket.id, roomId);
 
-    const player = { socketId: socket.id, role, name, hp, money, inventory };
+    const player = { socketId: socket.id, role, name, hp, money, inventory, strength, intelligence, agility, skills };
 
     if (role === 'gm') {
       room.gms.add(socket.id);
@@ -172,7 +183,7 @@ io.on('connection', (socket) => {
   });
 
   // Update character sheet
-  socket.on('player:update', ({ roomId, hp, money, inventory }) => {
+  socket.on('player:update', ({ roomId, hp, money, inventory, strength, intelligence, agility, skills }) => {
     const room = rooms.get(roomId);
     if (!room) return;
     const player = room.players.get(socket.id);
@@ -180,6 +191,10 @@ io.on('connection', (socket) => {
     if (typeof hp === 'number') player.hp = hp;
     if (typeof money === 'number') player.money = money;
     if (Array.isArray(inventory)) player.inventory = inventory;
+    if (typeof strength === 'number') player.strength = strength;
+    if (typeof intelligence === 'number') player.intelligence = intelligence;
+    if (typeof agility === 'number') player.agility = agility;
+    if (Array.isArray(skills)) player.skills = skills;
     io.to(roomId).emit('presence:update', {
       players: Array.from(room.players.values()).map(sanitizePublicPlayer),
       gms: Array.from(room.gms.values()),

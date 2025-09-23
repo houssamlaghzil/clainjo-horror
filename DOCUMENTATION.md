@@ -1,3 +1,25 @@
+- Fiche de personnage
+  - `player:update` (joueur -> serveur)
+    - Payload étendu:
+      ```json
+      {
+        "roomId": "<id>",
+        "hp": 10,
+        "money": 5,
+        "strength": 2,
+        "intelligence": 3,
+        "agility": 1,
+        "inventory": [
+          { "name": "Torche", "description": "Éclaire faiblement" },
+          { "name": "Corde", "description": "10m" }
+        ],
+        "skills": [
+          { "name": "Crochetage", "description": "Ouvre des serrures simples" }
+        ]
+      }
+      ```
+    - Le serveur renvoie `presence:update` à la room avec ces champs exposés à tous (cf. `sanitizePublicPlayer`).
+  - `join` accepte également ces champs (facultatifs) pour initialiser votre fiche.
 # Clainjo Horror — Guide fonctionnel et paramétrage
 
 Ce document décrit en détail les fonctionnalités de l’application, leur fonctionnement temps réel (Socket.IO), et toutes les variables utiles que vous pouvez ajuster pour modifier le comportement (env, constantes UI/serveur).
@@ -38,6 +60,13 @@ Local (dev)
 - Lancer le serveur: `npm run server`
 - Ou les deux: `npm run dev:all`
 
+Sélection de personnage (page d’accueil `/`)
+- Si vous choisissez le rôle « Joueur », vous pouvez sélectionner un personnage préfait depuis `src/assets/personages.json`.
+- À la connexion, les champs suivants sont préremplis à partir du JSON:
+  - `hp` (depuis `health`), `money` (depuis `gold`), `strength`, `intelligence`, `agility`.
+  - `inventory` (depuis `objects[]`) mappé en `{ name, description }` (la description concatène `description`, `effect`, `damage`, `blocking`, `price`, `usageLimit` si présents).
+  - `skills` (depuis `skills[]`) mappé en `{ name, description }` (ou `description + "\nEffet: ..."` si `effect`).
+
 Production (Docker)
 - Créer `.env` à la racine (voir plus bas)
 - Démarrer/reconstruire: `docker compose up -d --build --remove-orphans`
@@ -65,7 +94,10 @@ Note: `docker-compose.yml` charge automatiquement `.env` via `env_file`.
 
 ## Fonctionnalités côté Joueur (pages `/player`)
 - Fiche de personnage (`src/components/CharacterSheet.jsx`):
-  - Modification PV, argent, inventaire -> synchronisé via `player:update`.
+  - Modification PV (hp), argent, caractéristiques (force, intelligence, agilité).
+  - Inventaire structuré (objets avec `name`, `description`).
+  - Compétences structurées (compétences avec `name`, `description`).
+  - Tout est synchronisé via `player:update`.
 - Jets de dés (`src/components/DiceRoller.jsx`):
   - Boutons rapides (d4..d100), nombre de dés, libellé.
   - Application auto de bonus/malus (indices) au prochain jet.
@@ -98,9 +130,9 @@ Disposition desktop: grille 2 colonnes (sur >= 1024px) pour un poste MJ conforta
 ## Événements Socket.IO (contrat réseau)
 Côté serveur: `server/index.js`
 - Connexion/présence
-  - `join` (client -> serveur): `{ roomId, role, name, hp?, money?, inventory? }`
+  - `join` (client -> serveur): `{ roomId, role, name, hp?, money?, inventory?, strength?, intelligence?, agility?, skills? }`
   - `presence:update` (serveur -> room)
-  - `state:init` (serveur -> socket) état initial dont `wizard` (payload compact)
+  - `state:init` (serveur -> socket) état initial dont `you` (vos champs), `wizard` (payload compact)
   - `state:get` (GM -> serveur) renvoie `state:init`
 - Chat
   - `chat:message` (client -> serveur -> diffusion)
