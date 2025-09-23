@@ -80,7 +80,7 @@ export default function Player() {
             <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 9000, pointerEvents: 'none' }} />
           )}
 
-          <CollapsibleSection title="Fiche personnage" collapsed={collapsedCS} onToggle={() => setCollapsedCS((v) => !v)}>
+          <CollapsibleSection title="Fiche personnage" collapsed={collapsedCS} onToggle={() => setCollapsedCS((v) => !v)} noCard>
             <CharacterSheet />
           </CollapsibleSection>
 

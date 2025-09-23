@@ -67,10 +67,10 @@ export default function CharacterSheet() {
   };
 
   return (
-    <div className="card" style={{ padding: 12 }}>
-      <h3>Fiche de personnage</h3>
-      <form onSubmit={save} style={{ display: 'grid', gap: 10 }}>
-        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }}>
+    <section style={{ padding: '8px 0' }}>
+      <h3 style={{ margin: '0 0 8px 0' }}>Fiche de personnage</h3>
+      <form onSubmit={save} style={{ display: 'grid', gap: 12 }}>
+        <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '1fr' }}>
           <label>
             Points de vie
             <input type="number" value={hpEdit} onChange={(e) => setHpEdit(Number(e.target.value))} />
@@ -93,30 +93,30 @@ export default function CharacterSheet() {
           </label>
         </div>
 
-        <CollapsibleSection title="Inventaire" collapsed={invCollapsed} onToggle={() => setInvCollapsed((v) => !v)}>
-          <div style={{ display: 'grid', gap: 8 }}>
+        <CollapsibleSection title="Inventaire" collapsed={invCollapsed} onToggle={() => setInvCollapsed((v) => !v)} noCard>
+          <div style={{ display: 'grid', gap: 10 }}>
             {invList.map((it, idx) => (
-              <div key={idx} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 8 }}>
-                <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr auto' }}>
+              <div key={idx} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr', background: 'var(--bg-2)', borderRadius: 10, padding: 10 }}>
+                <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
                   <input placeholder="Nom de l'objet" value={it.name} onChange={(e) => editInv(idx, 'name', e.target.value)} />
                   <button type="button" onClick={() => removeInv(idx)} style={{ background: '#3c1111' }}>Supprimer</button>
                 </div>
-                <textarea rows={2} placeholder="Description" value={it.description} onChange={(e) => editInv(idx, 'description', e.target.value)} />
+                <textarea rows={3} placeholder="Description" value={it.description} onChange={(e) => editInv(idx, 'description', e.target.value)} />
               </div>
             ))}
             <button type="button" onClick={addInv} style={{ background: '#101010' }}>+ Ajouter un objet</button>
           </div>
         </CollapsibleSection>
 
-        <CollapsibleSection title="Compétences" collapsed={skillsCollapsed} onToggle={() => setSkillsCollapsed((v) => !v)}>
-          <div style={{ display: 'grid', gap: 8 }}>
+        <CollapsibleSection title="Compétences" collapsed={skillsCollapsed} onToggle={() => setSkillsCollapsed((v) => !v)} noCard>
+          <div style={{ display: 'grid', gap: 10 }}>
             {skillsList.map((it, idx) => (
-              <div key={idx} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 8 }}>
-                <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr auto' }}>
+              <div key={idx} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr', background: 'var(--bg-2)', borderRadius: 10, padding: 10 }}>
+                <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
                   <input placeholder="Nom de la compétence" value={it.name} onChange={(e) => editSkill(idx, 'name', e.target.value)} />
                   <button type="button" onClick={() => removeSkill(idx)} style={{ background: '#3c1111' }}>Supprimer</button>
                 </div>
-                <textarea rows={2} placeholder="Description" value={it.description} onChange={(e) => editSkill(idx, 'description', e.target.value)} />
+                <textarea rows={3} placeholder="Description" value={it.description} onChange={(e) => editSkill(idx, 'description', e.target.value)} />
               </div>
             ))}
             <button type="button" onClick={addSkill} style={{ background: '#101010' }}>+ Ajouter une compétence</button>
@@ -127,6 +127,6 @@ export default function CharacterSheet() {
           <button type="submit">Enregistrer</button>
         </div>
       </form>
-    </div>
+    </section>
   );
 }
