@@ -90,7 +90,12 @@ export function RealtimeProvider({ children }) {
         }
       }
     });
-    s.on('disconnect', () => setConnected(false));
+    s.on('disconnect', () => {
+      setConnected(false);
+      // Clear any transient hint UI on connection loss to avoid stale bubbles/modals
+      setHintBubble(null);
+      setHintContent(null);
+    });
 
     // server meta (version, etc.)
     s.on('server:meta', ({ version }) => {
@@ -160,6 +165,8 @@ export function RealtimeProvider({ children }) {
     // hint bubble notification from server (GM -> player)
     s.on('hint:notify', ({ id, kind = 'bonus', value = 0, durationMs = 5000, contentType }) => {
       const expiresAt = Date.now() + Math.max(1000, Number(durationMs));
+      // Receiving a new notification invalidates any previous open content
+      setHintContent(null);
       if (kind === 'info') {
         setHintBubble({ id, kind: 'info', contentType: contentType || 'text', expiresAt });
       } else {
@@ -316,8 +323,10 @@ export function RealtimeProvider({ children }) {
   // Player: claim the current hint bubble
   const claimHint = useCallback(() => {
     if (!roomId || !hintBubble?.id) return;
+    const snapshotId = hintBubble.id;
+    const snapshotRoom = roomId;
     const justJoined = ensureJoin();
-    const emit = () => socketRef.current?.emit('hint:claim', { roomId, hintId: hintBubble.id });
+    const emit = () => socketRef.current?.emit('hint:claim', { roomId: snapshotRoom, hintId: snapshotId });
     if (justJoined) setTimeout(emit, 50); else emit();
     setHintBubble(null);
   }, [roomId, hintBubble, ensureJoin]);
@@ -325,8 +334,10 @@ export function RealtimeProvider({ children }) {
   // Player: open a one-time content hint
   const openInfoHint = useCallback(() => {
     if (!roomId || !hintBubble?.id) return;
+    const snapshotId = hintBubble.id;
+    const snapshotRoom = roomId;
     const justJoined = ensureJoin();
-    const emit = () => socketRef.current?.emit('hint:open', { roomId, hintId: hintBubble.id });
+    const emit = () => socketRef.current?.emit('hint:open', { roomId: snapshotRoom, hintId: snapshotId });
     if (justJoined) setTimeout(emit, 50); else emit();
     // hide the bubble immediately to prevent multiple clicks
     setHintBubble(null);
@@ -444,7 +455,7 @@ export function RealtimeProvider({ children }) {
     sendHapticsStop,
     gmUpdatePlayer,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer]);
+  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer]);
 
   return (
     <RealtimeContext.Provider value={value}>
