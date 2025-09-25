@@ -17,9 +17,14 @@ export default function GMControls() {
 
   // hint state
   const [hintTarget, setHintTarget] = useState('');
-  const [hintKind, setHintKind] = useState('bonus'); // 'bonus' | 'malus'
+  const [hintMode, setHintMode] = useState('modifier'); // 'modifier' | 'info'
+  const [hintKind, setHintKind] = useState('bonus'); // for modifier: 'bonus' | 'malus'
   const [hintValue, setHintValue] = useState(2);
   const [hintDuration, setHintDuration] = useState(5000);
+  // content hint fields
+  const [contentType, setContentType] = useState('text'); // 'text' | 'image' | 'pdf'
+  const [contentText, setContentText] = useState('');
+  const [contentUrl, setContentUrl] = useState('');
 
   // no haptics state here — dedicated panel HapticsGM.jsx handles it
 
@@ -44,7 +49,17 @@ export default function GMControls() {
     e.preventDefault();
     const target = hintTarget || (players[0]?.socketId || '');
     if (!target) return;
-    sendHint({ target, kind: hintKind, value: Number(hintValue), durationMs: Number(hintDuration) });
+    if (hintMode === 'modifier') {
+      sendHint({ target, kind: hintKind, value: Number(hintValue), durationMs: Number(hintDuration) });
+    } else {
+      const content = contentType === 'text'
+        ? { type: 'text', text: contentText }
+        : { type: contentType, url: contentUrl };
+      sendHint({ target, kind: 'info', durationMs: Number(hintDuration), content });
+      // reset content fields lightly
+      setContentText('');
+      setContentUrl('');
+    }
   };
 
   const toggleTarget = (sid) => {
@@ -102,7 +117,7 @@ export default function GMControls() {
         <button type="submit" style={{ backgroundColor: '#8b0000', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Envoyer</button>
       </form>
 
-      <h3>Contrôles MJ — Indices (bonus/malus)</h3>
+      <h3>Contrôles MJ — Indices</h3>
       <form onSubmit={onSendHint} style={{ display: 'grid', gap: 8 }}>
         <label>
           Cible
@@ -114,16 +129,52 @@ export default function GMControls() {
           </select>
         </label>
         <label>
-          Type
-          <select value={hintKind} onChange={(e) => setHintKind(e.target.value)}>
-            <option value="bonus">Bonus (total - valeur)</option>
-            <option value="malus">Malus (total + valeur)</option>
+          Mode d'indice
+          <select value={hintMode} onChange={(e) => setHintMode(e.target.value)}>
+            <option value="modifier">Modificateur (bonus/malus)</option>
+            <option value="info">Contenu (une seule vue)</option>
           </select>
         </label>
-        <label>
-          Valeur
-          <input type="number" value={hintValue} onChange={(e) => setHintValue(e.target.value)} min="0" step="1" />
-        </label>
+        {hintMode === 'modifier' ? (
+          <>
+            <label>
+              Type
+              <select value={hintKind} onChange={(e) => setHintKind(e.target.value)}>
+                <option value="bonus">Bonus (total - valeur)</option>
+                <option value="malus">Malus (total + valeur)</option>
+              </select>
+            </label>
+            <label>
+              Valeur
+              <input type="number" value={hintValue} onChange={(e) => setHintValue(e.target.value)} min="0" step="1" />
+            </label>
+          </>
+        ) : (
+          <>
+            <label>
+              Format
+              <select value={contentType} onChange={(e) => setContentType(e.target.value)}>
+                <option value="text">Texte</option>
+                <option value="image">Image (URL)</option>
+                <option value="pdf">PDF (URL)</option>
+              </select>
+            </label>
+            {contentType === 'text' ? (
+              <label>
+                Texte de l'indice
+                <textarea value={contentText} onChange={(e) => setContentText(e.target.value)} rows={4} placeholder="Saisir le texte de l'indice..." />
+              </label>
+            ) : (
+              <label>
+                URL du contenu
+                <input type="url" value={contentUrl} onChange={(e) => setContentUrl(e.target.value)} placeholder="Ex: /hints/plan.pdf ou https://..." />
+              </label>
+            )}
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              Astuce: placez vos fichiers dans le dossier public/ et indiquez un chemin comme /hints/plan.pdf
+            </div>
+          </>
+        )}
         <label>
           Durée (ms)
           <input type="number" value={hintDuration} onChange={(e) => setHintDuration(e.target.value)} min="1000" step="500" />

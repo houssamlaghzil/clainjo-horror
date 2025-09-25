@@ -165,8 +165,8 @@ io.on('connection', (socket) => {
     }
   });
 
-  // GM sends a hint (bonus/malus) to one player
-  socket.on('hint:send', ({ roomId, target, kind = 'bonus', value = 0, durationMs }) => {
+  // GM sends a hint: 'bonus' | 'malus' (dice modifier) or 'info' (one-time content)
+  socket.on('hint:send', ({ roomId, target, kind = 'bonus', value = 0, durationMs, content }) => {
     const room = rooms.get(roomId);
     if (!room) return;
     if (!room.gms.has(socket.id)) return; // only GM may send hints
@@ -177,13 +177,34 @@ io.on('connection', (socket) => {
     const expiresAt = Date.now() + Math.max(1000, dur);
     // store pending hint for target
     const byPlayer = room.pendingHints.get(target) || new Map();
-    byPlayer.set(id, { kind, value: Number(value || 0), expiresAt });
-    room.pendingHints.set(target, byPlayer);
-    // notify the target
-    io.to(target).emit('hint:notify', { id, kind, value: Number(value || 0), durationMs: dur });
+    if (kind === 'info') {
+      // content hint: one-time view
+      const safe = content && typeof content === 'object' ? content : {};
+      const type = (safe.type === 'text' || safe.type === 'image' || safe.type === 'pdf') ? safe.type : 'text';
+      const entry = {
+        kind: 'info',
+        expiresAt,
+        content: {
+          type,
+          text: type === 'text' ? String(safe.text || '') : undefined,
+          url: (type === 'image' || type === 'pdf') ? String(safe.url || '') : undefined,
+        },
+        opened: false,
+      };
+      byPlayer.set(id, entry);
+      room.pendingHints.set(target, byPlayer);
+      // notify the target to show a bubble
+      io.to(target).emit('hint:notify', { id, kind: 'info', durationMs: dur, contentType: type });
+    } else {
+      // dice modifier hint
+      byPlayer.set(id, { kind, value: Number(value || 0), expiresAt });
+      room.pendingHints.set(target, byPlayer);
+      // notify the target
+      io.to(target).emit('hint:notify', { id, kind, value: Number(value || 0), durationMs: dur });
+    }
   });
 
-  // Player claims their hint bubble
+  // Player claims their hint bubble (dice modifier)
   socket.on('hint:claim', ({ roomId, hintId }) => {
     const room = rooms.get(roomId);
     if (!room) return;
@@ -192,6 +213,10 @@ io.on('connection', (socket) => {
     const h = byPlayer.get(hintId);
     if (!h) return;
     if (Date.now() > h.expiresAt) { byPlayer.delete(hintId); return; }
+    if (h.kind === 'info') {
+      // info hints are opened via 'hint:open' and cannot be claimed as modifiers
+      return;
+    }
     // move to modifiers queue
     const q = room.modifiers.get(socket.id) || [];
     q.push({ id: hintId, kind: h.kind === 'malus' ? 'malus' : 'bonus', value: Number(h.value || 0) });
@@ -201,6 +226,27 @@ io.on('connection', (socket) => {
     if (h.kind === 'malus') {
       io.to(socket.id).emit('screamer:trigger', { id: HINT_MALUS_SCREAMER_ID, intensity: HINT_MALUS_SCREAMER_INTENSITY });
     }
+  });
+
+  // Player opens a one-time content hint. This returns content exactly once.
+  socket.on('hint:open', ({ roomId, hintId }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    const byPlayer = room.pendingHints.get(socket.id);
+    if (!byPlayer) return;
+    const h = byPlayer.get(hintId);
+    if (!h) return; // already used or invalid
+    if (Date.now() > h.expiresAt) { byPlayer.delete(hintId); return; }
+    if (h.kind !== 'info') return; // only content hints can be opened
+    if (h.opened) return; // already opened once
+    h.opened = true;
+    // Remove from pending so it cannot be re-opened
+    byPlayer.delete(hintId);
+    // Emit content to this player only
+    const payload = { id: hintId, contentType: h.content?.type || 'text' };
+    if (h.content?.type === 'text') payload.text = String(h.content.text || '');
+    if (h.content?.type === 'image' || h.content?.type === 'pdf') payload.url = String(h.content.url || '');
+    io.to(socket.id).emit('hint:content', payload);
   });
 
   // Update character sheet (player-self). Preserve locked items/skills from template.

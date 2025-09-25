@@ -11,7 +11,7 @@ const HOVER_SCALE = 1.08;
 const WIGGLE_MS = 1200; // time for one wiggle step
 
 export default function HintBubble() {
-  const { hintBubble, setHintBubble, claimHint } = useRealtime();
+  const { hintBubble, setHintBubble, claimHint, openInfoHint } = useRealtime();
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const timerRef = useRef(null);
   const wiggleRef = useRef(null);
@@ -72,15 +72,26 @@ export default function HintBubble() {
 
   if (!hintBubble || !style) return null;
 
+  const onClick = () => {
+    if (!hintBubble) return;
+    if (hintBubble.kind === 'info') {
+      openInfoHint();
+    } else {
+      claimHint();
+    }
+  };
+
+  const label = hintBubble.kind === 'info' ? 'i' : '?';
+
   return (
     <div
       title="Indice"
-      onClick={claimHint}
+      onClick={onClick}
       style={style}
       onMouseEnter={(e) => { e.currentTarget.style.transform = `scale(${HOVER_SCALE})`; }}
       onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
     >
-      ?
+      {label}
     </div>
   );
 }

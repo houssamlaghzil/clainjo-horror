@@ -46,7 +46,8 @@ export function RealtimeProvider({ children }) {
   const [diceLog, setDiceLog] = useState([]);
   const [chat, setChat] = useState([]);
   const [serverVersion, setServerVersion] = useState('');
-  const [hintBubble, setHintBubble] = useState(null); // { id, kind, value, expiresAt }
+  const [hintBubble, setHintBubble] = useState(null); // { id, kind, value?, contentType?, expiresAt }
+  const [hintContent, setHintContent] = useState(null); // { id, contentType: 'text'|'image'|'pdf', text?, url? }
   // background haptics (e.g., heartbeat)
   const [haptics, setHaptics] = useState({ active: false, pattern: null, bpm: null, ts: 0 });
   // my socket id
@@ -157,9 +158,19 @@ export function RealtimeProvider({ children }) {
     });
 
     // hint bubble notification from server (GM -> player)
-    s.on('hint:notify', ({ id, kind = 'bonus', value = 0, durationMs = 5000 }) => {
+    s.on('hint:notify', ({ id, kind = 'bonus', value = 0, durationMs = 5000, contentType }) => {
       const expiresAt = Date.now() + Math.max(1000, Number(durationMs));
-      setHintBubble({ id, kind, value: Number(value || 0), expiresAt });
+      if (kind === 'info') {
+        setHintBubble({ id, kind: 'info', contentType: contentType || 'text', expiresAt });
+      } else {
+        setHintBubble({ id, kind, value: Number(value || 0), expiresAt });
+      }
+    });
+
+    // one-time hint content payload; emitted after we request open
+    s.on('hint:content', (payload) => {
+      // payload: { id, contentType, text?, url? }
+      setHintContent(payload || null);
     });
 
     // Wizard Battle events
@@ -294,11 +305,11 @@ export function RealtimeProvider({ children }) {
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
-  // GM: send a hint to a single player
-  const sendHint = useCallback(({ target, kind = 'bonus', value = 0, durationMs = 5000 }) => {
+  // GM: send a hint to a single player (bonus/malus) or content (info)
+  const sendHint = useCallback(({ target, kind = 'bonus', value = 0, durationMs = 5000, content } = {}) => {
     if (!roomId) return;
     const justJoined = ensureJoin();
-    const emit = () => socketRef.current?.emit('hint:send', { roomId, target, kind, value, durationMs });
+    const emit = () => socketRef.current?.emit('hint:send', { roomId, target, kind, value, durationMs, content });
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
@@ -308,6 +319,16 @@ export function RealtimeProvider({ children }) {
     const justJoined = ensureJoin();
     const emit = () => socketRef.current?.emit('hint:claim', { roomId, hintId: hintBubble.id });
     if (justJoined) setTimeout(emit, 50); else emit();
+    setHintBubble(null);
+  }, [roomId, hintBubble, ensureJoin]);
+
+  // Player: open a one-time content hint
+  const openInfoHint = useCallback(() => {
+    if (!roomId || !hintBubble?.id) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('hint:open', { roomId, hintId: hintBubble.id });
+    if (justJoined) setTimeout(emit, 50); else emit();
+    // hide the bubble immediately to prevent multiple clicks
     setHintBubble(null);
   }, [roomId, hintBubble, ensureJoin]);
 
@@ -390,6 +411,8 @@ export function RealtimeProvider({ children }) {
 
     // hint bubble
     hintBubble, setHintBubble,
+    hintContent, setHintContent,
+    openInfoHint,
 
     // Wizard Battle
     wizardActive,
