@@ -102,16 +102,6 @@ MJ desktop confortable, Joueurs mobile-first.
 - __Comment ça marche__
   `haptics:start` et `haptics:stop` avec pattern sécurisé et BPM encadré (≈50–160).
 
-### Contrôle du flash (torch)
-- __Pré-requis__
-  HTTPS ou `localhost` est requis pour l’accès caméra et le contrôle du flash sur mobile (Chrome/Android).
-- __Limites Android/Chrome__
-  Certains appareils Android exposent le flash au système mais pas au Web. Dans ce cas, `track.getCapabilities().torch` est absent et le MJ verra `unsupported`.
-- __Fallback intégré__
-  Si `torch` n’est pas exposé, l’appli simule un flash via un écran blanc court, une vibration et un bip discret. Le MJ verra `ACK:fallback` et peut lancer un `Test`.
-- __Bonnes pratiques__
-  Autorisez la caméra, laissez l’appli activer un `<video>` caché (pipeline actif), et forcez la caméra arrière si besoin. Utilisez le bouton "Tester mon flash" côté Joueur.
-
 ### Présence & fiches
 - __Ce que c’est__
   Liste des joueurs et fiches (PV, inventaire, argent, stats, compétences). MJ peut éditer les fiches des joueurs.

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { io as ioc } from 'socket.io-client';
 
 // Import server to ensure it is running (index.js will listen on PORT)
-import '../server/index.js';
+// Server import removed (feature removed); tests are skipped below.
 
 const SERVER_URL = 'http://localhost:4000';
 
@@ -14,7 +14,7 @@ async function connectClient(opts = {}) {
   });
 }
 
-describe('torch websocket broadcast', () => {
+describe.skip('torch websocket broadcast (removed feature)', () => {
   it('GM torch:set reaches the targeted player', async () => {
     const roomId = 'test-room-' + Math.random().toString(36).slice(2);
     const gm = await connectClient();

@@ -5,7 +5,6 @@ import Chat from '../components/Chat.jsx';
 import PresenceList from '../components/PresenceList.jsx';
 import WizardPlayer from '../components/WizardPlayer.jsx';
 import CollapsibleSection from '../components/CollapsibleSection.jsx';
-import TorchPlayer from '../components/TorchPlayer.jsx';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 import { useDeviceGuards } from '../hooks/useDeviceGuards.js';
 
@@ -18,7 +17,7 @@ export default function Player() {
   const [collapsedDice, setCollapsedDice] = useState(false);
   const [collapsedPresence, setCollapsedPresence] = useState(false);
   const [collapsedChat, setCollapsedChat] = useState(false);
-  const [collapsedTorch, setCollapsedTorch] = useState(false);
+  
 
   // Blackout mode: collapse all and show a full black background without blocking hints/screamers
   const [blackout, setBlackout] = useState(false);
@@ -94,9 +93,7 @@ export default function Player() {
             <PresenceList />
           </CollapsibleSection>
 
-          <CollapsibleSection title="Flash / Torche" collapsed={collapsedTorch} onToggle={() => setCollapsedTorch((v) => !v)}>
-            <TorchPlayer />
-          </CollapsibleSection>
+          
 
           <CollapsibleSection title="Chat" collapsed={collapsedChat} onToggle={() => setCollapsedChat((v) => !v)}>
             <div style={{ height: 240 }}>

@@ -6,7 +6,6 @@ import Chat from '../components/Chat.jsx';
 import GMControls from '../components/GMControls.jsx';
 import WizardGM from '../components/WizardGM.jsx';
 import HapticsGM from '../components/HapticsGM.jsx';
-import TorchGM from '../components/TorchGM.jsx';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 import { useDeviceGuards } from '../hooks/useDeviceGuards.js';
 
@@ -32,7 +31,6 @@ export default function GM() {
         <WizardGM />
         <GMControls />
         <HapticsGM />
-        <TorchGM />
         <PresenceList />
         <DiceRoller />
         <div style={{ height: 240 }}>

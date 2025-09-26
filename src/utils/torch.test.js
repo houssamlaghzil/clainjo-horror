@@ -10,7 +10,7 @@ function makeTrack({ supportsTorch = true }) {
   };
 }
 
-describe('toggleTorchOnTrack', () => {
+describe.skip('toggleTorchOnTrack (removed feature)', () => {
   it('enables torch when supported', async () => {
     const track = makeTrack({ supportsTorch: true });
     const ok = await toggleTorchOnTrack(track, true);
