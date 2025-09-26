@@ -20,8 +20,18 @@ export default function MapViewer() {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%', minHeight: '60vh', background: '#000' }}>
-      <img src={src} alt={zone} style={{ display: 'block', width: '100%', height: 'auto', objectFit: 'contain', maxHeight: 'calc(100vh - 160px)' }} />
+    <div style={{ position: 'absolute', inset: 0, background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <img
+        src={src}
+        alt={zone}
+        style={{
+          display: 'block',
+          width: '100vw',
+          height: '100vh',
+          objectFit: 'contain',
+          objectPosition: 'center center',
+        }}
+      />
     </div>
   );
 }
