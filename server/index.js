@@ -408,6 +408,48 @@ io.on('connection', (socket) => {
     });
   });
 
+  // ---- Torch control (camera flash) ----
+  // Player reports torch capability after initializing camera
+  socket.on('torch:capability', ({ roomId, supported }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    if (!room.players.has(socket.id) && !room.gms.has(socket.id)) return; // only known sockets
+    const caps = room.torchCaps.get(socket.id) || { supported: false };
+    caps.supported = !!supported;
+    room.torchCaps.set(socket.id, caps);
+    // Notify GMs about this player's capability
+    const payload = { socketId: socket.id, supported: !!supported };
+    room.gms.forEach((gmId) => io.to(gmId).emit('torch:support', payload));
+  });
+
+  // GM sets torch ON/OFF for targets or all
+  socket.on('torch:set', ({ roomId, targets = 'all', on = false }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    if (!room.gms.has(socket.id)) return; // GM only
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    const stamp = `${hh}:${mm}:${ss}`;
+
+    const allIds = Array.from(room.players.keys());
+    const list = targets === 'all' ? allIds : (Array.isArray(targets) ? targets : [targets]).filter((id) => room.players.has(id));
+    list.forEach((sid) => {
+      io.to(sid).emit('torch:set', { on: !!on });
+      // log to GM
+      io.to(socket.id).emit('torch:log', { at: stamp, target: sid, action: on ? 'ON' : 'OFF' });
+    });
+  });
+
+  // Player acknowledges torch action (success/failure)
+  socket.on('torch:status', ({ roomId, ok, message }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    const gmIds = Array.from(room.gms.values());
+    gmIds.forEach((gmId) => io.to(gmId).emit('torch:status', { from: socket.id, ok: !!ok, message: message ? String(message) : undefined }));
+  });
+
   // ---- Wizard Battle mode ----
   // Toggle by GM
   socket.on('wizard:toggle', ({ roomId, active }) => {
@@ -508,6 +550,7 @@ io.on('connection', (socket) => {
     socketToRoom.delete(socket.id);
     room.modifiers.delete(socket.id);
     room.pendingHints.delete(socket.id);
+    if (room.torchCaps) room.torchCaps.delete(socket.id);
 
     // notify
     io.to(roomId).emit('presence:update', {
@@ -528,6 +571,8 @@ function getOrCreateRoom(roomId) {
       pendingHints: new Map(), // socketId -> Map<hintId, { kind, value, expiresAt }>
       // modifiers to apply on next dice roll for a player
       modifiers: new Map(), // socketId -> Array<{ kind: 'bonus'|'malus', value: number, id: string }>
+      // Torch capabilities per socket
+      torchCaps: new Map(), // socketId -> { supported: boolean }
       // Wizard Battle state
       wizardActive: false,
       wizardRound: 0,

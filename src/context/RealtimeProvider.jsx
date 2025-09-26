@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { toggleTorchOnTrack } from '../utils/torch.js';
 import { io } from 'socket.io-client';
 
 const RealtimeContext = createContext(null);
@@ -67,6 +68,14 @@ export function RealtimeProvider({ children }) {
   // screamer UI
   const [screamer, setScreamer] = useState(null); // { id, intensity, imageUrl?, soundUrl?, ts }
   const lastJoinKeyRef = useRef('');
+
+  // Torch (flash) state
+  const torchStreamRef = useRef(null); // MediaStream
+  const torchTrackRef = useRef(null);  // MediaStreamTrack (video)
+  const [torchSupported, setTorchSupported] = useState(false); // player-side capability
+  const [torchActive, setTorchActive] = useState(false); // last requested state (best-effort)
+  const [gmTorchLog, setGmTorchLog] = useState([]); // GM-side log entries
+  const [torchSupportedMap, setTorchSupportedMap] = useState({}); // GM view: { socketId: boolean }
 
   // lazy-connect socket
   useEffect(() => {
@@ -180,6 +189,36 @@ export function RealtimeProvider({ children }) {
       setHintContent(payload || null);
     });
 
+    // Torch events
+    // Player receives set commands
+    s.on('torch:set', async ({ on }) => {
+      try {
+        const track = torchTrackRef.current;
+        if (!track) {
+          s.emit('torch:status', { roomId, ok: false, message: 'no-track' });
+          return;
+        }
+        const ok = await toggleTorchOnTrack(track, !!on);
+        setTorchActive(!!on && ok);
+        s.emit('torch:status', { roomId, ok, message: ok ? undefined : 'unsupported' });
+      } catch (err) {
+        console.error('[torch] set handler failed', err);
+        try { s.emit('torch:status', { roomId, ok: false, message: 'error' }); } catch (_) {}
+      }
+    });
+    // GM receives capability updates
+    s.on('torch:support', ({ socketId, supported }) => {
+      setTorchSupportedMap((m) => ({ ...m, [socketId]: !!supported }));
+    });
+    // GM log entries
+    s.on('torch:log', ({ at, target, action }) => {
+      setGmTorchLog((logs) => [{ at, target, action }, ...logs].slice(0, 200));
+    });
+    // GM sees status acks
+    s.on('torch:status', ({ from, ok, message }) => {
+      setGmTorchLog((logs) => [{ at: new Date().toLocaleTimeString(), target: from, action: ok ? 'ACK' : `ERR:${message||''}` }, ...logs].slice(0, 200));
+    });
+
     // Wizard Battle events
     s.on('wizard:state', (st) => {
       setWizardActive(Boolean(st?.active));
@@ -260,6 +299,50 @@ export function RealtimeProvider({ children }) {
     const emit = () => socketRef.current?.emit('dice:roll', { roomId, sides, count, label });
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
+
+  // Player: start/stop torch session (camera permission + capability check)
+  const startTorchSession = useCallback(async () => {
+    try {
+      if (!roomId) return false;
+      const justJoined = ensureJoin();
+      if (justJoined) await new Promise((r) => setTimeout(r, 60));
+      if (torchStreamRef.current) return true; // already
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      const track = stream.getVideoTracks()[0];
+      torchStreamRef.current = stream;
+      torchTrackRef.current = track;
+      // detect support
+      let supported = false;
+      try {
+        const caps = typeof track.getCapabilities === 'function' ? track.getCapabilities() : null;
+        supported = !!(caps && 'torch' in caps);
+      } catch (_) {}
+      setTorchSupported(supported);
+      socketRef.current?.emit('torch:capability', { roomId, supported });
+      return true;
+    } catch (err) {
+      console.error('[torch] start session failed', err);
+      setTorchSupported(false);
+      socketRef.current?.emit('torch:capability', { roomId, supported: false });
+      return false;
+    }
+  }, [roomId, ensureJoin]);
+
+  const stopTorchSession = useCallback(() => {
+    try {
+      const stream = torchStreamRef.current;
+      if (stream) {
+        for (const tr of stream.getTracks()) tr.stop();
+      }
+    } catch (_) {}
+    torchStreamRef.current = null;
+    torchTrackRef.current = null;
+    setTorchActive(false);
+    setTorchSupported(false);
+  }, []);
 
   // GM: update any player's character sheet
   const gmUpdatePlayer = useCallback(({ target, hp, money, inventory, strength, intelligence, agility, skills }) => {
@@ -420,6 +503,17 @@ export function RealtimeProvider({ children }) {
     // haptics
     haptics,
 
+    // torch (player)
+    torchSupported,
+    torchActive,
+    startTorchSession,
+    stopTorchSession,
+
+    // torch (GM)
+    gmSetTorch,
+    gmTorchLog,
+    torchSupportedMap,
+
     // hint bubble
     hintBubble, setHintBubble,
     hintContent, setHintContent,
@@ -455,7 +549,7 @@ export function RealtimeProvider({ children }) {
     sendHapticsStop,
     gmUpdatePlayer,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer]);
+  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer, torchSupported, torchActive, gmTorchLog, torchSupportedMap]);
 
   return (
     <RealtimeContext.Provider value={value}>

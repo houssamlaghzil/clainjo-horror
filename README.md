@@ -27,9 +27,11 @@
 
 - [Aperçu](#aperçu)
 - [Fonctionnalités](#fonctionnalités)
+- [Fonctionnalités détaillées](#fonctionnalités-détaillées)
 - [Démarrage rapide](#démarrage-rapide)
 - [Docker (prod-like)](#docker-prod-like)
 - [Configuration](#configuration)
+- [Typographie](#typographie)
 - [Architecture](#architecture)
 - [Captures](#captures)
 - [Roadmap](#roadmap)
@@ -47,11 +49,76 @@ MJ desktop confortable, Joueurs mobile-first.
 ## Fonctionnalités
 
 - **Chat spectral** : diffusion instantanée par room, sobriété, lisibilité.
-- **Jets autoritatifs** : serveur = source de vérité, bonus/malus “Indices”.
+- **Jets autoritatifs** : serveur = source de vérité, modificateurs appliqués côté serveur.
+- **Indices (bonus/malus + contenu à usage unique)** : 
+  - Bonus/Malus consommés sur le prochain jet.
+  - Indices “contenu” (texte/image/PDF) consultables une seule fois via une modale.
 - **Screamers** : overlay plein écran, son + image + vibration (courbe haptique).
+- **Haptique ciblée** : démarrage/arrêt d’un motif “battement” sur appareils compatibles.
 - **Wizard Battle** : saisie libre, arbitrage IA → JSON strict, révision MJ → publication.
-- **Présence & fiches** : PV, inventaire, monnaie, maj instantanée.
+- **Présence & fiches** : PV, inventaire, monnaie, caractéristiques, compétences.
 - **Layouts** : Joueurs = 1 colonne nette ; MJ = grille 2 colonnes ≥ 1024px.
+
+## Fonctionnalités détaillées
+
+### Chat
+- __Ce que c’est__
+  Messages temps-réel par salle (`roomId`). Support du broadcast (tous) et des messages ciblés.
+- __Comment ça marche__
+  Événement `chat:message` via Socket.IO. Stockage léger côté client.
+
+### Jets de dés (serveur autoritaire)
+- __Ce que c’est__
+  Les jets sont générés sur le serveur et diffusés à tous, avec historique limité.
+- __Comment ça marche__
+  Événement `dice:roll` → calcul serveur → `dice:result`. Si un modificateur est en file (bonus/malus), il est consommé sur ce jet.
+
+### Indices (bonus/malus + contenu à usage unique)
+- __Ce que c’est__
+  Deux familles d’indices :
+  1) Modificateurs de dés (bonus/malus) consommés au prochain jet.
+  2) Indices “contenu” (texte/image/PDF) consultables une seule fois.
+- __Comment ça marche__
+  - Côté MJ (`GMControls`):
+    - Mode "Modificateur" → choisir bonus/malus, valeur, durée de la bulle → Envoyer.
+    - Mode "Contenu" → choisir format (texte/image/PDF), saisir le texte ou l’URL → Envoyer.
+  - Côté Joueur:
+    - Une bulle apparaît.
+      - Bulle "?" = modificateur → clic = `hint:claim` (file d’attente de modificateurs côté serveur).
+      - Bulle "i" = contenu → clic = `hint:open` (le serveur renvoie `hint:content` une seule fois et supprime l’indice).
+    - La modale d’indice se ferme via le bouton "Fermer" ou Échap et ne peut pas être rouverte.
+- __Limites__
+  Impossible de rouvrir côté app (l’état serveur est effacé). Les captures d’écran restent techniquement possibles (limite inhérente au web).
+
+### Screamers
+- __Ce que c’est__
+  Un overlay plein écran, option image + son, intensité réglable, vibration si dispo.
+- __Comment ça marche__
+  Événement `screamer:send` (MJ → joueurs). Certains événements déclenchent des screamers automatiques (ex: critique sur d20). 
+
+### Haptique ciblée
+- __Ce que c’est__
+  Le MJ peut déclencher un motif haptique (battements) sur certains joueurs.
+- __Comment ça marche__
+  `haptics:start` et `haptics:stop` avec pattern sécurisé et BPM encadré (≈50–160).
+
+### Présence & fiches
+- __Ce que c’est__
+  Liste des joueurs et fiches (PV, inventaire, argent, stats, compétences). MJ peut éditer les fiches des joueurs.
+- __Comment ça marche__
+  Synchronisation via `presence:update`. Les verrous d’objets/compétences sont respectés côté serveur.
+
+### Wizard Battle (arbitrage IA)
+- __Ce que c’est__
+  Manche par manche, les joueurs soumettent un sort, l’IA produit un classement et un résumé. Le MJ peut publier ou corriger.
+- __Comment ça marche__
+  `wizard:toggle`/`wizard:submit`/`wizard:publish`… Appel OpenAI côté serveur via modèle configurable, format JSON strict avec validations et stratégies de repli (manuel, retry).
+
+### Assets de contenu (PDF/Images pour les indices)
+- __Ce que c’est__
+  Hébergement simple des fichiers d’indice.
+- __Comment ça marche__
+  Placez vos fichiers dans le dossier `public/` (ex: `public/hints/plan.pdf`) et utilisez l’URL `/hints/plan.pdf` dans le panneau MJ (mode "Contenu").
 
 ---
 
@@ -97,6 +164,15 @@ APP_VERSION=2025-09-21         # Optionnel, visible clients
 
 > \[!NOTE]
 > Réglages fins (intensités, tailles d’historique, délais IA…) : `DOCUMENTATION.md`.
+
+> \[!TIP]
+> Fichiers d’indices: placez images/PDF dans `public/` (ex: `public/hints/indice.jpg`) et référez-les dans le panneau MJ via `/hints/indice.jpg`.
+
+## Typographie
+
+- **Hamstrong** pour les titres (`h1`, `h2`, `h3`).
+- Chargée depuis `src/assets/fonts/` et appliquée globalement via CSS.
+- Permet un rendu “horreur” net tout en gardant la lecture claire sur mobile.
 
 ---
 
