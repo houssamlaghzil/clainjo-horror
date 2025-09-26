@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { toggleTorchOnTrack } from '../utils/torch.js';
+import { toggleTorchOnTrack, isTorchSupportedOnTrack, playStreamInHiddenVideo } from '../utils/torch.js';
 import { io } from 'socket.io-client';
 
 const RealtimeContext = createContext(null);
@@ -16,6 +16,37 @@ export function RealtimeProvider({ children }) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch (_) {}
+  }, []);
+
+  // Player: local flash test without MJ (short pulse)
+  const testTorchLocal = useCallback(async () => {
+    try {
+      const track = torchTrackRef.current;
+      if (!track) return { ok: false, reason: 'no-track' };
+      const ok = await toggleTorchOnTrack(track, true);
+      if (ok) {
+        setTorchActive(true);
+        await new Promise((r) => setTimeout(r, 320));
+        await toggleTorchOnTrack(track, false);
+        setTorchActive(false);
+        return { ok: true, mode: 'native' };
+      }
+      // fallback pulse
+      let ov = torchOverlayRef.current;
+      if (!ov) {
+        ov = document.createElement('div');
+        Object.assign(ov.style, { position: 'fixed', inset: '0', background: '#ffffff', opacity: '0', transition: 'opacity 60ms linear', zIndex: '2147483647', pointerEvents: 'none' });
+        document.body.appendChild(ov);
+        torchOverlayRef.current = ov;
+      }
+      ov.style.display = 'block'; requestAnimationFrame(() => { ov.style.opacity = '1'; });
+      try { if (navigator.vibrate) navigator.vibrate([30, 20, 30]); } catch (_) {}
+      await new Promise((r) => setTimeout(r, 320));
+      ov.style.opacity = '0'; setTimeout(() => { ov.style.display = 'none'; }, 80);
+      return { ok: true, mode: 'fallback' };
+    } catch (e) {
+      return { ok: false, reason: 'error' };
+    }
   }, []);
 
   const loadSession = useCallback(() => {
@@ -76,6 +107,13 @@ export function RealtimeProvider({ children }) {
   const [torchActive, setTorchActive] = useState(false); // last requested state (best-effort)
   const [gmTorchLog, setGmTorchLog] = useState([]); // GM-side log entries
   const [torchSupportedMap, setTorchSupportedMap] = useState({}); // GM view: { socketId: boolean }
+  const [torchMeta, setTorchMeta] = useState({}); // GM view: { socketId: { supported, settings, capabilities, constraints, ua, secure, note, ts } }
+  const torchVideoElRef = useRef(null); // hidden <video> to keep pipeline alive
+  const torchOverlayRef = useRef(null); // fallback white overlay element
+  // Camera selection & lens control
+  const [cameraDevices, setCameraDevices] = useState([]); // Array<{ deviceId, label, facing: 'front'|'environment'|'unknown' }>
+  const [selectedCameraId, setSelectedCameraId] = useState(null);
+  const [zoomCap, setZoomCap] = useState(null); // { min, max, step } or null
 
   // lazy-connect socket
   useEffect(() => {
@@ -199,16 +237,92 @@ export function RealtimeProvider({ children }) {
           return;
         }
         const ok = await toggleTorchOnTrack(track, !!on);
-        setTorchActive(!!on && ok);
-        s.emit('torch:status', { roomId, ok, message: ok ? undefined : 'unsupported' });
+        if (ok) {
+          setTorchActive(!!on);
+          s.emit('torch:status', { roomId, ok: true });
+          return;
+        }
+        // Fallback: emulate flash (white overlay + vibrate + optional click sound)
+        // Create overlay if missing
+        let ov = torchOverlayRef.current;
+        if (!ov) {
+          ov = document.createElement('div');
+          Object.assign(ov.style, { position: 'fixed', inset: '0', background: '#ffffff', opacity: '0', transition: 'opacity 60ms linear', zIndex: '2147483647', pointerEvents: 'none' });
+          document.body.appendChild(ov);
+          torchOverlayRef.current = ov;
+        }
+        if (on) {
+          ov.style.display = 'block';
+          // small raf to ensure paint
+          requestAnimationFrame(() => { ov.style.opacity = '1'; });
+          try { if (navigator.vibrate) navigator.vibrate([30, 20, 30]); } catch (_) {}
+          // soft beep (may be blocked without user gesture)
+          try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) {
+              const ctx = new AC();
+              const o = ctx.createOscillator(); const g = ctx.createGain();
+              o.type = 'square'; o.frequency.value = 880;
+              g.gain.value = 0.05; o.connect(g); g.connect(ctx.destination);
+              o.start(); o.stop(ctx.currentTime + 0.08);
+            }
+          } catch (_) {}
+          setTorchActive(true);
+          s.emit('torch:status', { roomId, ok: true, message: 'fallback' });
+        } else {
+          ov.style.opacity = '0';
+          setTimeout(() => { ov.style.display = 'none'; }, 80);
+          try { if (navigator.vibrate) navigator.vibrate(0); } catch (_) {}
+          setTorchActive(false);
+          s.emit('torch:status', { roomId, ok: true, message: 'fallback' });
+        }
       } catch (err) {
         console.error('[torch] set handler failed', err);
         try { s.emit('torch:status', { roomId, ok: false, message: 'error' }); } catch (_) {}
       }
     });
-    // GM receives capability updates
-    s.on('torch:support', ({ socketId, supported }) => {
+    // Player: run a local torch test (short ON then OFF)
+    s.on('torch:test', async () => {
+      try {
+        const track = torchTrackRef.current;
+        if (!track) { s.emit('torch:status', { roomId, ok: false, message: 'test-no-track' }); return; }
+        const ok = await toggleTorchOnTrack(track, true);
+        if (ok) {
+          setTorchActive(true);
+          setTimeout(async () => { await toggleTorchOnTrack(track, false); setTorchActive(false); s.emit('torch:status', { roomId, ok: true, message: 'test-ok' }); }, 320);
+        } else {
+          // fallback short pulse
+          let ov = torchOverlayRef.current;
+          if (!ov) {
+            ov = document.createElement('div');
+            Object.assign(ov.style, { position: 'fixed', inset: '0', background: '#ffffff', opacity: '0', transition: 'opacity 60ms linear', zIndex: '2147483647', pointerEvents: 'none' });
+            document.body.appendChild(ov);
+            torchOverlayRef.current = ov;
+          }
+          ov.style.display = 'block'; requestAnimationFrame(() => { ov.style.opacity = '1'; });
+          try { if (navigator.vibrate) navigator.vibrate([30, 20, 30]); } catch (_) {}
+          try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) {
+              const ctx = new AC();
+              const o = ctx.createOscillator(); const g = ctx.createGain();
+              o.type = 'square'; o.frequency.value = 880;
+              g.gain.value = 0.05; o.connect(g); g.connect(ctx.destination);
+              o.start(); o.stop(ctx.currentTime + 0.08);
+            }
+          } catch (_) {}
+          setTimeout(() => { ov.style.opacity = '0'; setTimeout(() => { ov.style.display = 'none'; }, 80); s.emit('torch:status', { roomId, ok: true, message: 'test-fallback' }); }, 320);
+        }
+      } catch (e) {
+        s.emit('torch:status', { roomId, ok: false, message: 'test-error' });
+      }
+    });
+    // GM receives capability updates (detailed)
+    s.on('torch:support', (payload) => {
+      const { socketId, supported } = payload || {};
+      if (!socketId) return;
       setTorchSupportedMap((m) => ({ ...m, [socketId]: !!supported }));
+      setTorchMeta((m) => ({ ...m, [socketId]: { ...payload, supported: !!supported } }));
     });
     // GM log entries
     s.on('torch:log', ({ at, target, action }) => {
@@ -216,7 +330,8 @@ export function RealtimeProvider({ children }) {
     });
     // GM sees status acks
     s.on('torch:status', ({ from, ok, message }) => {
-      setGmTorchLog((logs) => [{ at: new Date().toLocaleTimeString(), target: from, action: ok ? 'ACK' : `ERR:${message||''}` }, ...logs].slice(0, 200));
+      const action = ok ? (message ? `ACK:${message}` : 'ACK') : `ERR:${message||''}`;
+      setGmTorchLog((logs) => [{ at: new Date().toLocaleTimeString(), target: from, action }, ...logs].slice(0, 200));
     });
 
     // Wizard Battle events
@@ -300,28 +415,76 @@ export function RealtimeProvider({ children }) {
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
+  // GM: request a local torch test on targets
+  const gmTestTorch = useCallback(({ targets = 'all' } = {}) => {
+    if (!roomId) return;
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('torch:test', { roomId, targets });
+    if (justJoined) setTimeout(emit, 50); else emit();
+  }, [roomId, ensureJoin]);
+
   // Player: start/stop torch session (camera permission + capability check)
-  const startTorchSession = useCallback(async () => {
+  const startTorchSession = useCallback(async (opts = {}) => {
     try {
       if (!roomId) return false;
       const justJoined = ensureJoin();
       if (justJoined) await new Promise((r) => setTimeout(r, 60));
       if (torchStreamRef.current) return true; // already
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      const { deviceId: deviceIdPref, facingMode: facingPref } = opts || {};
+      let stream = await navigator.mediaDevices.getUserMedia({
+        video: deviceIdPref ? { deviceId: { exact: deviceIdPref }, width: { ideal: 1280 }, height: { ideal: 720 } } : { facingMode: { ideal: facingPref || 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       const track = stream.getVideoTracks()[0];
       torchStreamRef.current = stream;
       torchTrackRef.current = track;
-      // detect support
-      let supported = false;
+      // Attach to hidden <video> to ensure pipeline active
+      try { torchVideoElRef.current = await playStreamInHiddenVideo(stream, torchVideoElRef.current); } catch (_) {}
+      // Ensure back camera: if settings don't indicate environment, try re-select via deviceId
+      let settings = typeof track.getSettings === 'function' ? track.getSettings() : {};
+      setSelectedCameraId(settings?.deviceId || null);
+      if (settings?.facingMode && settings.facingMode !== 'environment') {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const backs = devices.filter((d) => d.kind === 'videoinput' && /back|rear|environment/i.test(d.label || ''));
+          if (backs.length) {
+            const devId = backs[0].deviceId;
+            // stop previous
+            try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+            stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: devId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+            const tr = stream.getVideoTracks()[0];
+            torchStreamRef.current = stream;
+            torchTrackRef.current = tr;
+            try { torchVideoElRef.current = await playStreamInHiddenVideo(stream, torchVideoElRef.current); } catch (_) {}
+            settings = typeof tr.getSettings === 'function' ? tr.getSettings() : {};
+            setSelectedCameraId(settings?.deviceId || null);
+          }
+        } catch (_) {}
+      }
+      // detect support (caps + optional ImageCapture)
+      const supported = await isTorchSupportedOnTrack(torchTrackRef.current);
+      setTorchSupported(!!supported);
+      // collect debug meta
+      const capabilities = typeof torchTrackRef.current?.getCapabilities === 'function' ? torchTrackRef.current.getCapabilities() : undefined;
+      const constraints = typeof torchTrackRef.current?.getConstraints === 'function' ? torchTrackRef.current.getConstraints() : undefined;
+      // update zoom capability if present
+      if (capabilities && typeof capabilities.zoom !== 'undefined') {
+        const z = capabilities.zoom; // may be number or {min,max,step}
+        if (z && typeof z === 'object') setZoomCap({ min: z.min ?? 1, max: z.max ?? 1, step: z.step ?? 0.1 });
+        else setZoomCap(null);
+      } else {
+        setZoomCap(null);
+      }
+      const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+      const secure = (typeof location !== 'undefined') ? (location.protocol === 'https:' || location.hostname === 'localhost') : false;
+      const note = (torchVideoElRef.current && torchVideoElRef.current.paused) ? 'video-not-playing' : undefined;
+      socketRef.current?.emit('torch:capability', { roomId, supported: !!supported, settings, capabilities, constraints, ua, secure, note });
+      // refresh device catalog (labels become available after permission)
       try {
-        const caps = typeof track.getCapabilities === 'function' ? track.getCapabilities() : null;
-        supported = !!(caps && 'torch' in caps);
+        const devs = await navigator.mediaDevices.enumerateDevices();
+        const vids = devs.filter((d) => d.kind === 'videoinput').map((d) => ({ deviceId: d.deviceId, label: d.label || 'Caméra', facing: /front/i.test(d.label) ? 'front' : (/back|rear|environment/i.test(d.label) ? 'environment' : 'unknown') }));
+        setCameraDevices(vids);
       } catch (_) {}
-      setTorchSupported(supported);
-      socketRef.current?.emit('torch:capability', { roomId, supported });
       return true;
     } catch (err) {
       console.error('[torch] start session failed', err);
@@ -342,7 +505,85 @@ export function RealtimeProvider({ children }) {
     torchTrackRef.current = null;
     setTorchActive(false);
     setTorchSupported(false);
+    // Remove hidden video if present
+    try {
+      const v = torchVideoElRef.current; if (v && v.parentNode) v.parentNode.removeChild(v);
+    } catch (_) {}
+    torchVideoElRef.current = null;
+    // Hide overlay if any
+    try {
+      const ov = torchOverlayRef.current; if (ov) ov.style.display = 'none';
+    } catch (_) {}
+    setCameraDevices([]);
+    setSelectedCameraId(null);
+    setZoomCap(null);
   }, []);
+
+  // Refresh available video input devices (labels require prior permission)
+  const refreshVideoDevices = useCallback(async () => {
+    try {
+      const devs = await navigator.mediaDevices.enumerateDevices();
+      const vids = devs.filter((d) => d.kind === 'videoinput').map((d) => ({ deviceId: d.deviceId, label: d.label || 'Caméra', facing: /front/i.test(d.label) ? 'front' : (/back|rear|environment/i.test(d.label) ? 'environment' : 'unknown') }));
+      setCameraDevices(vids);
+      return vids;
+    } catch (e) {
+      return [];
+    }
+  }, []);
+
+  // Switch camera to a specific deviceId
+  const setCameraDevice = useCallback(async (deviceId) => {
+    try {
+      if (!deviceId) return false;
+      // stop current
+      try { torchStreamRef.current?.getTracks()?.forEach((t) => t.stop()); } catch (_) {}
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      const tr = stream.getVideoTracks()[0];
+      torchStreamRef.current = stream;
+      torchTrackRef.current = tr;
+      setSelectedCameraId(deviceId);
+      try { torchVideoElRef.current = await playStreamInHiddenVideo(stream, torchVideoElRef.current); } catch (_) {}
+      // recompute support and caps
+      const supported = await isTorchSupportedOnTrack(tr);
+      setTorchSupported(!!supported);
+      const settings = typeof tr.getSettings === 'function' ? tr.getSettings() : {};
+      const capabilities = typeof tr.getCapabilities === 'function' ? tr.getCapabilities() : undefined;
+      const constraints = typeof tr.getConstraints === 'function' ? tr.getConstraints() : undefined;
+      if (capabilities && typeof capabilities.zoom !== 'undefined') {
+        const z = capabilities.zoom; if (z && typeof z === 'object') setZoomCap({ min: z.min ?? 1, max: z.max ?? 1, step: z.step ?? 0.1 }); else setZoomCap(null);
+      } else { setZoomCap(null); }
+      const ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+      const secure = (typeof location !== 'undefined') ? (location.protocol === 'https:' || location.hostname === 'localhost') : false;
+      const note = (torchVideoElRef.current && torchVideoElRef.current.paused) ? 'video-not-playing' : undefined;
+      socketRef.current?.emit('torch:capability', { roomId, supported: !!supported, settings, capabilities, constraints, ua, secure, note });
+      return true;
+    } catch (e) {
+      console.warn('[torch] failed to switch camera', e);
+      return false;
+    }
+  }, [roomId]);
+
+  // Set zoom value if supported
+  const setZoom = useCallback(async (value) => {
+    try {
+      const tr = torchTrackRef.current; if (!tr) return false;
+      if (!zoomCap) return false;
+      const v = Math.max(zoomCap.min, Math.min(zoomCap.max, value));
+      await tr.applyConstraints({ advanced: [{ zoom: v }] });
+      return true;
+    } catch (e) { return false; }
+  }, [zoomCap]);
+
+  // Lens presets using zoom
+  const applyLensPreset = useCallback(async (preset) => {
+    if (!zoomCap) return false;
+    const { min, max } = zoomCap;
+    const mid = (min + max) / 2;
+    if (preset === 'ultrawide') return setZoom(min);
+    if (preset === 'tele') return setZoom(max);
+    // 'wide' default or unknown
+    return setZoom(mid);
+  }, [zoomCap, setZoom]);
 
   // GM: update any player's character sheet
   const gmUpdatePlayer = useCallback(({ target, hp, money, inventory, strength, intelligence, agility, skills }) => {
@@ -516,11 +757,21 @@ export function RealtimeProvider({ children }) {
     torchActive,
     startTorchSession,
     stopTorchSession,
+    testTorchLocal,
+    cameraDevices,
+    selectedCameraId,
+    refreshVideoDevices,
+    setCameraDevice,
+    zoomCap,
+    setZoom,
+    applyLensPreset,
 
     // torch (GM)
     gmSetTorch,
+    gmTestTorch,
     gmTorchLog,
     torchSupportedMap,
+    torchMeta,
 
     // hint bubble
     hintBubble, setHintBubble,
@@ -557,7 +808,7 @@ export function RealtimeProvider({ children }) {
     sendHapticsStop,
     gmUpdatePlayer,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer, startTorchSession, stopTorchSession, gmSetTorch, torchSupported, torchActive, gmTorchLog, torchSupportedMap]);
+  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer, startTorchSession, stopTorchSession, testTorchLocal, cameraDevices, selectedCameraId, refreshVideoDevices, setCameraDevice, zoomCap, setZoom, applyLensPreset, gmSetTorch, gmTestTorch, torchSupported, torchActive, gmTorchLog, torchSupportedMap, torchMeta]);
 
   return (
     <RealtimeContext.Provider value={value}>
