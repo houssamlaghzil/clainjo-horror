@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 import { getZoneMaps, normalizeZoneName } from '../utils/zoneMaps.js';
 import * as THREE from 'three';
-import { DeviceOrientationControls } from 'three/examples/jsm/controls/DeviceOrientationControls.js';
 
 export default function MapViewer() {
   const { selectedZone } = useRealtime();
@@ -53,6 +52,47 @@ function Panorama360({ src, alt }) {
   const rafRef = useRef(0);
   const [needPermission, setNeedPermission] = useState(false);
 
+  // Lightweight DeviceOrientation controls (internal, no external example import)
+  function createDeviceOrientationControls(object) {
+    const scope = { deviceOrientation: {}, screenOrientation: 0 };
+    const zee = new THREE.Vector3(0, 0, 1);
+    const euler = new THREE.Euler();
+    const q0 = new THREE.Quaternion();
+    const q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)); // -PI/2 around X
+
+    const onDeviceOrientation = (event) => {
+      scope.deviceOrientation = event;
+    };
+    const onScreenOrientation = () => {
+      scope.screenOrientation = (window.orientation || 0);
+    };
+    window.addEventListener('deviceorientation', onDeviceOrientation, true);
+    window.addEventListener('orientationchange', onScreenOrientation, false);
+    onScreenOrientation();
+
+    function setObjectQuaternion(quaternion, alpha, beta, gamma, orient) {
+      // ZXY for the device, but 'YXZ' for us
+      euler.set(beta, alpha, -gamma, 'YXZ');
+      quaternion.setFromEuler(euler);
+      quaternion.multiply(q1);
+      quaternion.multiply(q0.setFromAxisAngle(zee, -orient));
+    }
+
+    return {
+      update() {
+        const alpha = THREE.MathUtils.degToRad(scope.deviceOrientation.alpha || 0); // Z
+        const beta = THREE.MathUtils.degToRad(scope.deviceOrientation.beta || 0); // X'
+        const gamma = THREE.MathUtils.degToRad(scope.deviceOrientation.gamma || 0); // Y''
+        const orient = THREE.MathUtils.degToRad(scope.screenOrientation || 0);
+        setObjectQuaternion(object.quaternion, alpha, beta, gamma, orient);
+      },
+      dispose() {
+        window.removeEventListener('deviceorientation', onDeviceOrientation, true);
+        window.removeEventListener('orientationchange', onScreenOrientation, false);
+      }
+    };
+  }
+
   useEffect(() => {
     if (!mountRef.current) return;
 
@@ -85,13 +125,8 @@ function Panorama360({ src, alt }) {
     scene.add(mesh);
 
     // DeviceOrientation controls (monoscopic)
-    let controls;
-    try {
-      controls = new DeviceOrientationControls(camera);
-      controlsRef.current = controls;
-    } catch (_) {
-      controls = null;
-    }
+    let controls = createDeviceOrientationControls(camera);
+    controlsRef.current = controls;
 
     // iOS 13+ requires permission
     const iosNeedsPerm = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
@@ -136,7 +171,8 @@ function Panorama360({ src, alt }) {
           // Recreate controls after permission
           if (cameraRef.current) {
             try {
-              controlsRef.current = new DeviceOrientationControls(cameraRef.current);
+              controlsRef.current?.dispose?.();
+              controlsRef.current = createDeviceOrientationControls(cameraRef.current);
             } catch (_) {}
           }
         }
