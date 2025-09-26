@@ -31,6 +31,9 @@ describe('torch websocket broadcast', () => {
       });
     });
 
+    // Report player capability (supported) so server allows torch:set delivery
+    player.emit('torch:capability', { roomId, supported: true });
+
     const received = new Promise((resolve) => {
       player.once('torch:set', ({ on }) => resolve(on));
     });

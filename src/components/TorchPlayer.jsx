@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 
 export default function TorchPlayer() {
-  const { torchSupported, torchActive, startTorchSession, stopTorchSession } = useRealtime();
+  const { torchSupported, torchActive, startTorchSession, stopTorchSession, testTorchLocal } = useRealtime();
   const [error, setError] = useState('');
+  const [test, setTest] = useState('');
 
   const onStart = async () => {
     setError('');
@@ -20,17 +21,35 @@ export default function TorchPlayer() {
     try { stopTorchSession(); } catch (e) { setError('Erreur: ' + (e?.message || 'inconnue')); }
   };
 
+  const onTest = async () => {
+    setTest('');
+    try {
+      const res = await testTorchLocal();
+      if (res?.ok) {
+        setTest(res.mode === 'native' ? 'Test: natif OK' : 'Test: fallback actif');
+      } else {
+        setTest('Test: échec (' + (res?.reason || 'inconnu') + ')');
+      }
+    } catch (e) {
+      setTest('Test: erreur');
+    }
+  };
+
   return (
     <div style={{ border: '2px solid #1f2937', borderRadius: 12, padding: 12, background: 'rgba(17,24,39,0.5)' }}>
       <h3>Flash / Torche (mobile)</h3>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button onClick={onStart} style={{ background: '#065f46', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Autoriser caméra</button>
         <button onClick={onStop} style={{ background: '#7f1d1d', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Couper</button>
+        <button onClick={onTest} style={{ background: '#1d4ed8', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Tester mon flash</button>
         <span style={{ alignSelf: 'center', fontSize: 12, opacity: 0.9 }}>
           Support: <strong style={{ color: torchSupported ? '#22c55e' : '#ef4444' }}>{torchSupported ? 'Oui' : 'Non'}</strong>
           {torchSupported ? ` — Etat: ${torchActive ? 'ON' : 'OFF'}` : ''}
         </span>
       </div>
+      {test && (
+        <div style={{ marginTop: 8, color: '#93c5fd', fontSize: 12 }}>{test}</div>
+      )}
       {error && (
         <div style={{ marginTop: 8, color: '#fca5a5', fontSize: 12 }}>{error}</div>
       )}
