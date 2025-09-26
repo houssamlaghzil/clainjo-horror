@@ -120,6 +120,16 @@ io.on('connection', (socket) => {
       gms: Array.from(room.gms.values()),
     });
 
+  // GM sets the current zone (map)
+  socket.on('zone:set', ({ roomId, zone }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    if (!room.gms.has(socket.id)) return; // GM only
+    const z = String(zone || '').trim() || 'village';
+    room.selectedZone = z;
+    io.to(roomId).emit('zone:update', { zone: z });
+  });
+
   // GM-only: update another player's character sheet
   socket.on('gm:player:update', ({ roomId, target, hp, money, inventory, strength, intelligence, agility, skills }) => {
     const room = rooms.get(roomId);
@@ -148,6 +158,7 @@ io.on('connection', (socket) => {
       gms: Array.from(room.gms.values()),
       diceLog: room.diceLog,
       wizard: wizardStatePayload(room),
+      zone: room.selectedZone || 'village',
     });
   });
 
@@ -405,6 +416,7 @@ io.on('connection', (socket) => {
       gms: Array.from(room.gms.values()),
       diceLog: room.diceLog,
       wizard: wizardStatePayload(room),
+      zone: room.selectedZone || 'village',
     });
   });
 
@@ -529,6 +541,8 @@ function getOrCreateRoom(roomId) {
       pendingHints: new Map(), // socketId -> Map<hintId, { kind, value, expiresAt }>
       // modifiers to apply on next dice roll for a player
       modifiers: new Map(), // socketId -> Array<{ kind: 'bonus'|'malus', value: number, id: string }>
+      // Zone selection (map)
+      selectedZone: 'village',
       // Wizard Battle state
       wizardActive: false,
       wizardRound: 0,

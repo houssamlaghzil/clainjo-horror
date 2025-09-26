@@ -78,6 +78,9 @@ export function RealtimeProvider({ children }) {
 
   // Torch/camera features removed
 
+  // Zone selection (map)
+  const [selectedZone, setSelectedZone] = useState('village');
+
   // lazy-connect socket
   useEffect(() => {
     // In production (served by the same Express app), connect to same-origin.
@@ -148,6 +151,7 @@ export function RealtimeProvider({ children }) {
         if (typeof y.agility === 'number') setAgility(y.agility);
         if (Array.isArray(y.skills)) setSkills(y.skills);
       }
+      if (payload.zone) setSelectedZone(String(payload.zone));
     });
 
     // chat
@@ -191,6 +195,11 @@ export function RealtimeProvider({ children }) {
     });
 
     // Torch/camera events removed
+
+    // Zone updates
+    s.on('zone:update', ({ zone }) => {
+      if (zone) setSelectedZone(String(zone));
+    });
 
     // Wizard Battle events
     s.on('wizard:state', (st) => {
@@ -352,6 +361,17 @@ export function RealtimeProvider({ children }) {
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
+  // GM: set current zone (map)
+  const gmSetZone = useCallback((zone) => {
+    if (!roomId) return;
+    const z = String(zone || '').trim() || 'village';
+    const justJoined = ensureJoin();
+    const emit = () => socketRef.current?.emit('zone:set', { roomId, zone: z });
+    if (justJoined) setTimeout(emit, 50); else emit();
+    // Optimistic update for GM UI
+    setSelectedZone(z);
+  }, [roomId, ensureJoin]);
+
   // Player: claim the current hint bubble
   const claimHint = useCallback(() => {
     if (!roomId || !hintBubble?.id) return;
@@ -457,6 +477,10 @@ export function RealtimeProvider({ children }) {
     hintContent, setHintContent,
     openInfoHint,
 
+    // zone selection
+    selectedZone,
+    gmSetZone,
+
     // Wizard Battle
     wizardActive,
     wizardRound,
@@ -487,7 +511,7 @@ export function RealtimeProvider({ children }) {
     sendHapticsStop,
     gmUpdatePlayer,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer, clearSession]);
+  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer, clearSession, selectedZone, gmSetZone]);
 
   return (
     <RealtimeContext.Provider value={value}>

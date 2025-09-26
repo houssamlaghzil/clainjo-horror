@@ -7,10 +7,13 @@ import WizardPlayer from '../components/WizardPlayer.jsx';
 import CollapsibleSection from '../components/CollapsibleSection.jsx';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 import { useDeviceGuards } from '../hooks/useDeviceGuards.js';
+import useOrientation from '../hooks/useOrientation.js';
+import MapViewer from '../components/MapViewer.jsx';
 
 export default function Player() {
   const { name, roomId, connected, serverVersion, wizardActive, statusSummary } = useRealtime();
   const { enableImmersive } = useDeviceGuards();
+  const orientation = useOrientation();
 
   // Collapsible states per section
   const [collapsedCS, setCollapsedCS] = useState(false);
@@ -44,6 +47,17 @@ export default function Player() {
       return next;
     });
   };
+
+  // Landscape: show only the selected zone map
+  if (orientation === 'landscape') {
+    return (
+      <div className="page" style={{ padding: 0 }}>
+        <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 1 }}>
+          <MapViewer />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
