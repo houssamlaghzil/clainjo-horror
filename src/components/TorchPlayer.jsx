@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 
 export default function TorchPlayer() {
+<<<<<<< HEAD
   const {
     torchSupported,
     torchActive,
@@ -27,6 +28,11 @@ export default function TorchPlayer() {
     // initialize local selection from context when available
     if (selectedCameraId && !camSel) setCamSel(selectedCameraId);
   }, [selectedCameraId, camSel]);
+=======
+  const { torchSupported, torchActive, startTorchSession, stopTorchSession, testTorchLocal } = useRealtime();
+  const [error, setError] = useState('');
+  const [test, setTest] = useState('');
+>>>>>>> origin/master
 
   const onStart = async () => {
     setError('');
@@ -69,6 +75,7 @@ export default function TorchPlayer() {
           {torchSupported ? ` — Etat: ${torchActive ? 'ON' : 'OFF'}` : ''}
         </span>
       </div>
+<<<<<<< HEAD
 
       <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -93,6 +100,8 @@ export default function TorchPlayer() {
           </div>
         )}
       </div>
+=======
+>>>>>>> origin/master
       {test && (
         <div style={{ marginTop: 8, color: '#93c5fd', fontSize: 12 }}>{test}</div>
       )}
