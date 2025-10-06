@@ -5,6 +5,7 @@ import Chat from '../components/Chat.jsx';
 import PresenceList from '../components/PresenceList.jsx';
 import WizardPlayer from '../components/WizardPlayer.jsx';
 import CollapsibleSection from '../components/CollapsibleSection.jsx';
+import LegendaryItemGenerator from '../components/LegendaryItemGenerator.jsx';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 import { useDeviceGuards } from '../hooks/useDeviceGuards.js';
 import useOrientation from '../hooks/useOrientation.js';
@@ -98,6 +99,9 @@ export default function Player() {
           <CollapsibleSection title="Fiche personnage" collapsed={collapsedCS} onToggle={() => setCollapsedCS((v) => !v)} noCard>
             <CharacterSheet />
           </CollapsibleSection>
+
+          {/* Copper's special ability: Legendary Item Generator */}
+          {name === 'Copper' && <LegendaryItemGenerator />}
 
           <CollapsibleSection title="Dés" collapsed={collapsedDice} onToggle={() => setCollapsedDice((v) => !v)}>
             <DiceRoller />

@@ -5,6 +5,7 @@ import { Server } from 'socket.io';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import 'dotenv/config';
 
 const PORT = process.env.PORT || 4000;
 
@@ -509,6 +510,122 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Copper: Generate legendary item (special ability)
+  socket.on('copper:generate-item', async ({ roomId }) => {
+    const room = rooms.get(roomId);
+    if (!room) {
+      socket.emit('copper:item-error', { error: 'Room not found' });
+      return;
+    }
+    
+    const player = room.players.get(socket.id);
+    if (!player) {
+      socket.emit('copper:item-error', { error: 'Player not found' });
+      return;
+    }
+
+    // Check if player is Copper
+    if (player.name !== 'Copper') {
+      socket.emit('copper:item-error', { error: 'Cette capacité est réservée à Copper' });
+      return;
+    }
+
+    // Initialize usage counter if not exists
+    if (typeof player.copperItemUses !== 'number') {
+      player.copperItemUses = 0;
+    }
+
+    // Check usage limit (10 max without GM permission)
+    if (player.copperItemUses >= 10) {
+      socket.emit('copper:item-error', { error: 'Limite de 10 utilisations atteinte. Demandez l\'autorisation du MJ.' });
+      return;
+    }
+
+    try {
+      // Roll D20
+      const d20Roll = 1 + Math.floor(Math.random() * 20);
+      
+      // Generate item data
+      const itemData = generateLegendaryItemData(d20Roll);
+      
+      // Generate image prompt
+      const imagePrompt = generateImagePrompt(itemData);
+      
+      // Generate image with Together AI
+      const imageUrl = await generateItemImage(imagePrompt);
+      
+      // Prepare the complete result
+      const result = {
+        jet_d20: itemData.jet_d20,
+        objet: itemData.objet,
+        image_prompt: imagePrompt,
+        image_url: imageUrl
+      };
+
+      // Add item to inventory (locked = true so player can't edit it)
+      const newItem = {
+        name: `${itemData.objet.nom} (${itemData.objet.degats}, ${itemData.objet.utilisations} uses)`,
+        description: itemData.objet.description,
+        locked: true,
+        imageUrl: imageUrl,
+        legendary: true,
+        damage: itemData.objet.degats,
+        uses: itemData.objet.utilisations
+      };
+      
+      if (!Array.isArray(player.inventory)) {
+        player.inventory = [];
+      }
+      player.inventory.push(newItem);
+
+      // Increment usage counter
+      player.copperItemUses += 1;
+
+      // Update presence to sync inventory
+      io.to(roomId).emit('presence:update', {
+        players: Array.from(room.players.values()).map(sanitizePublicPlayer),
+        gms: Array.from(room.gms.values()),
+      });
+
+      // Send success response with full data
+      socket.emit('copper:item-generated', {
+        ...result,
+        usesRemaining: 10 - player.copperItemUses
+      });
+
+      // Notify GMs
+      room.gms.forEach((gmId) => {
+        io.to(gmId).emit('copper:item-notification', {
+          player: player.name,
+          item: result,
+          usesRemaining: 10 - player.copperItemUses
+        });
+      });
+
+    } catch (error) {
+      console.error('Copper item generation error:', error);
+      socket.emit('copper:item-error', { 
+        error: 'Erreur lors de la génération de l\'objet', 
+        details: error.message 
+      });
+    }
+  });
+
+  // GM: Reset Copper's item generation count
+  socket.on('copper:reset-uses', ({ roomId, targetSocketId }) => {
+    const room = rooms.get(roomId);
+    if (!room) return;
+    if (!room.gms.has(socket.id)) return; // Only GM can reset
+    
+    const targetPlayer = room.players.get(targetSocketId);
+    if (!targetPlayer) return;
+    
+    targetPlayer.copperItemUses = 0;
+    
+    io.to(targetSocketId).emit('copper:uses-reset', { message: 'Le MJ a réinitialisé vos utilisations' });
+    socket.emit('copper:uses-reset-success', { player: targetPlayer.name });
+  });
+
   // Disconnect
   socket.on('disconnect', () => {
     const roomId = socketToRoom.get(socket.id);
@@ -752,6 +869,127 @@ function publishWizardResults(roomId, results, meta) {
   // start next round
   startWizardRound(room);
   io.to(roomIdLocal).emit('wizard:state', wizardStatePayload(room));
+}
+
+// ===== Copper's Legendary Item Generator =====
+
+// Item data based on D20 roll
+function generateLegendaryItemData(d20Roll) {
+  const roll = Math.max(1, Math.min(20, Number(d20Roll) || 1));
+  
+  // Item pools for each category
+  const items = {
+    // 1-5: Ultra-powerful weapons (1D20 damage, limited uses, epic tone)
+    ultraPowerful: [
+      { nom: "Lame de l'Éternité Quantique", degats: "1D20", utilisations: 3, description: "Une épée forgée dans le vide entre les dimensions, sa lame scintille de particules subatomiques. Elle peut trancher la réalité elle-même." },
+      { nom: "Prisme de Destruction Atomique", degats: "1D20", utilisations: 2, description: "Un artefact cristallin qui concentre l'énergie des étoiles mourantes. Sa décharge annihile toute matière en pure lumière." },
+      { nom: "Sceptre du Chaos Originel", degats: "1D20", utilisations: 4, description: "Bâton titanesque gravé de runes qui défient les lois physiques. Il canalise l'entropie primordiale de l'univers." },
+      { nom: "Gant d'Antimatter Compressé", degats: "1D20", utilisations: 2, description: "Gantelet noir absolu qui contient une singularité contrôlée. Son contact désintègre instantanément la matière ordinaire." },
+      { nom: "Canon Hypersonique Dimensionnel", degats: "1D20", utilisations: 3, description: "Arme futuriste aux lignes élégantes qui tire des projectiles à travers les dimensions. Chaque tir déchire l'espace-temps." },
+    ],
+    // 6-10: Practical delicate items (1D6 damage, refined tone)
+    practical: [
+      { nom: "Dague de Cristal Harmonique", degats: "1D6", utilisations: 8, description: "Lame translucide qui résonne à la fréquence moléculaire des cibles. Fragile mais d'une précision mortelle." },
+      { nom: "Pistolet à Plasma Élégant", degats: "1D6", utilisations: 12, description: "Arme de poing chromée au design épuré. Projette des bolts de plasma bleuté d'une beauté hypnotique." },
+      { nom: "Glaive Neuronal Télékinétique", degats: "1D6", utilisations: 10, description: "Épée légère contrôlée par l'esprit, flotte en lévitation autour du porteur. Sa finesse compense sa fragilité." },
+      { nom: "Fouet Énergétique Polymorphe", degats: "1D6", utilisations: 15, description: "Chaîne de photons solidifiés qui change de forme selon la volonté. Délicat mais infiniment adaptable." },
+      { nom: "Orbe de Gravité Focalisée", degats: "1D6", utilisations: 6, description: "Sphère translucide qui manipule les champs gravitationnels locaux. Peut broyer ou repousser avec précision." },
+    ],
+    // 11-15: Rare precious but broken (1D4 damage, mysterious tone)
+    broken: [
+      { nom: "Relique Stellaire Désactivée", degats: "1D4", utilisations: 0, description: "Magnifique artefact doré couvert de glyphs aliens. Son noyau énergétique est éteint depuis des millénaires." },
+      { nom: "Couronne de Résonance Brisée", degats: "1D4", utilisations: 0, description: "Diadème de métal vivant qui pulse faiblement. Ses circuits psychiques sont irrémédiablement endommagés." },
+      { nom: "Gemme du Néant Scellée", degats: "1D4", utilisations: 0, description: "Cristal noir absolu d'une beauté hypnotique. Un verrou dimensionnel antique bloque son pouvoir terrifiant." },
+      { nom: "Codex Holographique Corrompu", degats: "1D4", utilisations: 0, description: "Livre de lumière solidifiée contenant des savoirs infinis. Ses données sont fragmentées et illisibles." },
+      { nom: "Anneau Temporel Gelé", degats: "1D4", utilisations: 0, description: "Bague d'argent liquide figée dans le temps. Elle vibre d'un pouvoir chronologique inaccessible." },
+    ],
+    // 16-20: Cursed/inverted (1D4 or none, dark ironic tone)
+    cursed: [
+      { nom: "Marteau de Gravité Inversée", degats: "1D4", utilisations: 5, description: "Masse qui repousse au lieu de frapper. Active un champ gravitationnel chaotique autour du porteur pendant 10 minutes." },
+      { nom: "Bouclier Absorbant de Douleur", degats: "0", utilisations: 3, description: "Disque énergétique qui absorbe les dégâts... et les redirige vers son porteur avec 50% d'amplification." },
+      { nom: "Épée de Sacrifice Vital", degats: "1D4", utilisations: 7, description: "Lame noire qui inflige des dégâts redoutables. Chaque frappe draine 1D4 HP de Copper pour alimenter sa puissance." },
+      { nom: "Amulette de Vérité Cruelle", degats: "0", utilisations: 1, description: "Pendentif qui révèle toutes les vérités cachées dans 50m. Force Copper à dire uniquement la vérité pendant 1 heure." },
+      { nom: "Gant de Force Réfléchie", degats: "1D4", utilisations: 4, description: "Gantelet qui décuple la force... mais inverse aussi tous les mouvements du porteur pendant 5 minutes." },
+    ]
+  };
+
+  let category, item, categorieName;
+  
+  if (roll >= 1 && roll <= 5) {
+    category = items.ultraPowerful;
+    categorieName = "arme ultra-puissante";
+  } else if (roll >= 6 && roll <= 10) {
+    category = items.practical;
+    categorieName = "objet pratique";
+  } else if (roll >= 11 && roll <= 15) {
+    category = items.broken;
+    categorieName = "objet rare inutilisable";
+  } else {
+    category = items.cursed;
+    categorieName = "objet maudit";
+  }
+  
+  item = category[Math.floor(Math.random() * category.length)];
+  
+  return {
+    jet_d20: roll,
+    objet: {
+      nom: item.nom,
+      degats: item.degats,
+      utilisations: item.utilisations,
+      description: item.description,
+      categorie: categorieName
+    }
+  };
+}
+
+// Generate image prompt for Together AI
+function generateImagePrompt(itemData) {
+  const { nom, description } = itemData.objet;
+  
+  // Create detailed prompt in French for FLUX model
+  return `${nom}, objet technophantasy photo-réaliste, rendu ultra-détaillé 8K, matériaux futuristes luisants, reflets métalliques froids, aura énergétique subtile, particules lumineuses, éclairage directionnel studio froid, lumière cinématographique, fond neutre sombre gradient, composition centrée, depth of field, ray tracing, matériaux PBR, science-fiction réaliste, mystique technologique, ratio 1:1, hyper-réalisme`;
+}
+
+// Call Together AI to generate image
+async function generateItemImage(prompt) {
+  const TOGETHER_API_KEY = process.env.TOGETHER_API || '';
+  if (!TOGETHER_API_KEY) {
+    throw new Error('TOGETHER_API key not configured');
+  }
+
+  try {
+    const response = await fetch('https://api.together.xyz/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${TOGETHER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'black-forest-labs/FLUX.1-schnell',
+        prompt: prompt,
+        width: 1024,
+        height: 1024,
+        steps: 4,
+        n: 1,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Together AI API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    if (!data.data || !data.data[0] || !data.data[0].url) {
+      throw new Error('Invalid response from Together AI');
+    }
+
+    return data.data[0].url;
+  } catch (error) {
+    console.error('Together AI generation error:', error);
+    throw error;
+  }
 }
 
 // SPA fallback (after Socket.IO setup); let websocket handle /socket.io

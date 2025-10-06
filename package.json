@@ -23,7 +23,8 @@
     "express": "^4.21.1",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "three": "^0.161.0"
+    "three": "^0.161.0",
+    "dotenv": "^16.4.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.35.0",
