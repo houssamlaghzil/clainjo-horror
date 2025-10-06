@@ -8,12 +8,36 @@ export default function LegendaryItemGenerator() {
   const [error, setError] = useState(null);
   const [usesRemaining, setUsesRemaining] = useState(10);
 
+  // Initial fallback: read backup from localStorage (in case server hasn't restored yet)
+  useEffect(() => {
+    if (name !== 'Copper') return;
+    try {
+      const raw = localStorage.getItem('clainjo.copper.backup.v1');
+      if (!raw) return;
+      const b = JSON.parse(raw);
+      if (b && b.roomId === roomId && b.name === name && typeof b.copperItemUses === 'number') {
+        setUsesRemaining(Math.max(0, 10 - b.copperItemUses));
+      }
+    } catch {}
+  }, [roomId, name]);
+
   // Sync usesRemaining from server state
   useEffect(() => {
     if (!myId || !players) return;
     const me = players.find(p => p.socketId === myId);
     if (me && typeof me.copperItemUses === 'number') {
       setUsesRemaining(10 - me.copperItemUses);
+      // Keep backup in sync
+      try {
+        const raw = localStorage.getItem('clainjo.copper.backup.v1');
+        const prev = raw ? JSON.parse(raw) : {};
+        localStorage.setItem('clainjo.copper.backup.v1', JSON.stringify({
+          ...prev,
+          roomId,
+          name,
+          copperItemUses: me.copperItemUses,
+        }));
+      } catch {}
     }
   }, [myId, players]);
 
@@ -29,13 +53,27 @@ export default function LegendaryItemGenerator() {
       console.log('✅ Item generated:', data);
       setLastGenerated(data);
       setUsesRemaining(data.usesRemaining);
-      setGenerating(false);
       setError(null);
       
       // Force update inventory immediately
       if (data.updatedInventory) {
         console.log('🔄 Updating inventory with:', data.updatedInventory);
         setInventory(data.updatedInventory);
+        // Persist Copper backup locally as a safety net
+        if (name === 'Copper') {
+          try {
+            const raw = localStorage.getItem('clainjo.copper.backup.v1');
+            const prev = raw ? JSON.parse(raw) : {};
+            const used = Math.max(0, 10 - (data.usesRemaining ?? 10));
+            localStorage.setItem('clainjo.copper.backup.v1', JSON.stringify({
+              ...prev,
+              roomId,
+              name,
+              inventory: data.updatedInventory,
+              copperItemUses: used,
+            }));
+          } catch {}
+        }
       }
     };
 

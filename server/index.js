@@ -116,17 +116,20 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socketToRoom.set(socket.id, roomId);
 
-    // Check if this player (by name) already exists in the room from a previous session
-    let existingPlayer = null;
-    for (const [oldSocketId, p] of room.players.entries()) {
-      if (p.name === name && oldSocketId !== socket.id) {
-        existingPlayer = p;
-        // Remove old socket mapping
-        room.players.delete(oldSocketId);
-        socketToRoom.delete(oldSocketId);
-        room.modifiers.delete(oldSocketId);
-        room.pendingHints.delete(oldSocketId);
-        break;
+    // Prefer persisted player snapshot by name
+    let existingPlayer = room.persistentPlayers?.get(name) || null;
+    // Fallback: search current live players with same name (stale socket)
+    if (!existingPlayer) {
+      for (const [oldSocketId, p] of room.players.entries()) {
+        if (p.name === name && oldSocketId !== socket.id) {
+          existingPlayer = p;
+          // Remove old socket mapping
+          room.players.delete(oldSocketId);
+          socketToRoom.delete(oldSocketId);
+          room.modifiers.delete(oldSocketId);
+          room.pendingHints.delete(oldSocketId);
+          break;
+        }
       }
     }
 
@@ -158,6 +161,9 @@ io.on('connection', (socket) => {
     } else {
       room.players.set(socket.id, player);
     }
+
+    // Persist snapshot by player name for future reconnects
+    try { room.persistentPlayers.set(name, { ...player }); } catch (_) {}
 
     // Send back the merged state to the client so they have the server's version
     socket.emit('state:init', {
@@ -200,6 +206,8 @@ io.on('connection', (socket) => {
     if (typeof intelligence === 'number') player.intelligence = intelligence;
     if (typeof agility === 'number') player.agility = agility;
     if (Array.isArray(skills)) player.skills = skills;
+    // Persist snapshot by name
+    try { room.persistentPlayers.set(player.name, { ...player }); } catch (_) {}
     io.to(roomId).emit('presence:update', {
       players: Array.from(room.players.values()).map(sanitizePublicPlayer),
       gms: Array.from(room.gms.values()),
@@ -633,6 +641,9 @@ io.on('connection', (socket) => {
       // Increment usage counter
       player.copperItemUses += 1;
 
+      // Persist snapshot by player name so reloads restore inventory and uses
+      try { room.persistentPlayers.set(player.name, { ...player }); } catch (_) {}
+
       // Log for debugging
       console.log(`✅ Copper generated item: ${itemData.objet.nom}, inventory count: ${player.inventory.length}`);
 
@@ -677,6 +688,13 @@ io.on('connection', (socket) => {
     if (!targetPlayer) return;
     
     targetPlayer.copperItemUses = 0;
+    // Persist snapshot after reset
+    try { room.persistentPlayers.set(targetPlayer.name, { ...targetPlayer }); } catch (_) {}
+    // Broadcast presence so clients update uses
+    io.to(roomId).emit('presence:update', {
+      players: Array.from(room.players.values()).map(sanitizePublicPlayer),
+      gms: Array.from(room.gms.values()),
+    });
     
     io.to(targetSocketId).emit('copper:uses-reset', { message: 'Le MJ a réinitialisé vos utilisations' });
     socket.emit('copper:uses-reset-success', { player: targetPlayer.name });
@@ -725,6 +743,8 @@ function getOrCreateRoom(roomId) {
       wizardHistory: [], // Array<{ round, groups, submissions, results, ts }>
       wizardAIFailCount: 0,
       statusEffects: new Map(), // socketId -> Array<{ type: 'narrative', text }>
+      // Persistent per-name player cache to survive reconnects
+      persistentPlayers: new Map(), // name -> { player snapshot }
     });
   }
   return rooms.get(roomId);
@@ -902,6 +922,8 @@ function publishWizardResults(roomId, results, meta) {
     const p = room.players.get(sid);
     if (p && Number.isFinite(hpDelta) && hpDelta !== 0) {
       p.hp = Math.max(0, Number(p.hp || 0) + hpDelta);
+      // Persist HP change
+      try { room.persistentPlayers.set(p.name, { ...p }); } catch (_) {}
     }
     // narrative effect persists (simple list)
     if (narrative) {
