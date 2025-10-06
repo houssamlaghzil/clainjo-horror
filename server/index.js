@@ -172,6 +172,7 @@ io.on('connection', (socket) => {
       players: Array.from(room.players.values()).map(sanitizePublicPlayer),
       gms: Array.from(room.gms.values()),
     });
+  });
 
   // GM sets the current zone (map)
   socket.on('zone:set', ({ roomId, zone }) => {
