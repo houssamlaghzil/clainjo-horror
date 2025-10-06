@@ -149,7 +149,8 @@ io.on('connection', (socket) => {
 
     console.log(`🔄 Player ${name} joined room ${roomId}${existingPlayer ? ' (restored from previous session)' : ' (new)'}`);
     if (existingPlayer) {
-      console.log(`   Inventory: ${player.inventory.length} items, Copper uses: ${player.copperItemUses}`);
+      console.log(`   📦 Inventory: ${player.inventory.length} items, Copper uses: ${player.copperItemUses}`);
+      console.log(`   📤 Sending state:init with inventory:`, player.inventory.map(i => i.name).join(', '));
     }
 
     if (role === 'gm') {

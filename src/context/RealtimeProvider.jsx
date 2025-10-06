@@ -137,6 +137,7 @@ export function RealtimeProvider({ children }) {
 
     // init state
     s.on('state:init', (payload) => {
+      console.log('📥 state:init received from server:', payload.you);
       if (payload.players) setPlayers(payload.players);
       if (payload.gms) setGms(payload.gms);
       if (payload.diceLog) setDiceLog(payload.diceLog);
@@ -145,7 +146,10 @@ export function RealtimeProvider({ children }) {
         if (y.socketId) setMyId(y.socketId);
         if (typeof y.hp === 'number') setHp(y.hp);
         if (typeof y.money === 'number') setMoney(y.money);
-        if (Array.isArray(y.inventory)) setInventory(y.inventory);
+        if (Array.isArray(y.inventory)) {
+          console.log('📦 Restoring inventory from server:', y.inventory.length, 'items');
+          setInventory(y.inventory);
+        }
         if (typeof y.strength === 'number') setStrength(y.strength);
         if (typeof y.intelligence === 'number') setIntelligence(y.intelligence);
         if (typeof y.agility === 'number') setAgility(y.agility);
