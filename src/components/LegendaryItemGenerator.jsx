@@ -2,11 +2,20 @@ import React, { useEffect, useState } from 'react';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 
 export default function LegendaryItemGenerator() {
-  const { socket, roomId, name, setInventory } = useRealtime();
+  const { socket, roomId, name, setInventory, myId, players } = useRealtime();
   const [generating, setGenerating] = useState(false);
   const [lastGenerated, setLastGenerated] = useState(null);
   const [error, setError] = useState(null);
   const [usesRemaining, setUsesRemaining] = useState(10);
+
+  // Sync usesRemaining from server state
+  useEffect(() => {
+    if (!myId || !players) return;
+    const me = players.find(p => p.socketId === myId);
+    if (me && typeof me.copperItemUses === 'number') {
+      setUsesRemaining(10 - me.copperItemUses);
+    }
+  }, [myId, players]);
 
   // Only show for Copper
   if (name !== 'Copper') {

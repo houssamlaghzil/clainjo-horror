@@ -90,8 +90,9 @@ function sanitizePublicPlayer(p) {
     intelligence = 0,
     agility = 0,
     skills = [], // Array<{ name, description }>
+    copperItemUses = 0,
   } = p;
-  return { socketId, name, role, hp, money, inventory, strength, intelligence, agility, skills };
+  return { socketId, name, role, hp, money, inventory, strength, intelligence, agility, skills, copperItemUses };
 }
 
 // Socket.IO connection handlers
@@ -107,13 +108,56 @@ io.on('connection', (socket) => {
     socket.join(roomId);
     socketToRoom.set(socket.id, roomId);
 
-    const player = { socketId: socket.id, role, name, hp, money, inventory, strength, intelligence, agility, skills };
+    // Check if this player (by name) already exists in the room from a previous session
+    let existingPlayer = null;
+    for (const [oldSocketId, p] of room.players.entries()) {
+      if (p.name === name && oldSocketId !== socket.id) {
+        existingPlayer = p;
+        // Remove old socket mapping
+        room.players.delete(oldSocketId);
+        socketToRoom.delete(oldSocketId);
+        room.modifiers.delete(oldSocketId);
+        room.pendingHints.delete(oldSocketId);
+        break;
+      }
+    }
+
+    // If player existed, merge server-side state with client data (server takes priority for important fields)
+    const player = {
+      socketId: socket.id,
+      role,
+      name,
+      // Use existing server data if available, otherwise use client data
+      hp: existingPlayer?.hp ?? hp,
+      money: existingPlayer?.money ?? money,
+      inventory: existingPlayer?.inventory ?? inventory,
+      strength: existingPlayer?.strength ?? strength,
+      intelligence: existingPlayer?.intelligence ?? intelligence,
+      agility: existingPlayer?.agility ?? agility,
+      skills: existingPlayer?.skills ?? skills,
+      // Preserve Copper's usage count
+      copperItemUses: existingPlayer?.copperItemUses ?? 0
+    };
+
+    console.log(`🔄 Player ${name} joined room ${roomId}${existingPlayer ? ' (restored from previous session)' : ' (new)'}`);
+    if (existingPlayer) {
+      console.log(`   Inventory: ${player.inventory.length} items, Copper uses: ${player.copperItemUses}`);
+    }
 
     if (role === 'gm') {
       room.gms.add(socket.id);
     } else {
       room.players.set(socket.id, player);
     }
+
+    // Send back the merged state to the client so they have the server's version
+    socket.emit('state:init', {
+      players: Array.from(room.players.values()).map(sanitizePublicPlayer),
+      gms: Array.from(room.gms.values()),
+      diceLog: room.diceLog,
+      you: player,
+      zone: room.selectedZone,
+    });
 
     // notify others
     io.to(roomId).emit('presence:update', {
@@ -149,17 +193,6 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('presence:update', {
       players: Array.from(room.players.values()).map(sanitizePublicPlayer),
       gms: Array.from(room.gms.values()),
-    });
-  });
-
-    // send initial state to the new client
-    socket.emit('state:init', {
-      you: player,
-      players: Array.from(room.players.values()).map(sanitizePublicPlayer),
-      gms: Array.from(room.gms.values()),
-      diceLog: room.diceLog,
-      wizard: wizardStatePayload(room),
-      zone: room.selectedZone || 'village',
     });
   });
 

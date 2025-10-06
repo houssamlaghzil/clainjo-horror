@@ -156,9 +156,32 @@ npm run server  # Backend sur :4000
 npm run dev     # Frontend sur :5173
 ```
 
+## 💾 Persistance
+
+### Données conservées après rechargement
+
+✅ **Inventaire complet** (objets normaux + légendaires)
+✅ **Compétences**
+✅ **Statistiques** (HP, argent, force, intelligence, agilité)
+✅ **Compteur d'utilisations de Copper** (`copperItemUses`)
+
+### Mécanisme de persistance
+
+1. **localStorage (client)** : Sauvegarde locale de la session
+2. **Mémoire serveur** : État autoritaire basé sur le nom du joueur
+3. **Reconnexion** : Le serveur restaure l'état si le joueur rejoint avec le même nom
+
+### Important
+
+- 🔑 **Le nom du joueur** est la clé de persistance dans une room
+- 📊 **Le serveur a toujours la priorité** sur les données
+- 🔄 **Reconnexion automatique** : Les données sont restaurées même après fermeture du navigateur
+- ⚠️ **Images Together AI** : URLs temporaires, expirent après quelques heures
+
 ## 📝 Notes
 
 - Le compteur d'utilisations est stocké dans `player.copperItemUses`
 - Les objets générés sont marqués avec `locked: true` et `legendary: true`
 - Les images Together AI sont temporaires (expiration après quelques heures)
 - Le style visuel utilise la police **Hamstrong** pour les titres
+- Voir `TEST_PERSISTENCE.md` pour tests détaillés de persistance

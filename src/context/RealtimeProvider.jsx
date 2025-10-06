@@ -447,6 +447,7 @@ export function RealtimeProvider({ children }) {
     roomId, setRoomId,
     role, setRole,
     name, setName,
+    myId,
 
     // character
     hp, setHp,
@@ -511,7 +512,7 @@ export function RealtimeProvider({ children }) {
     sendHapticsStop,
     gmUpdatePlayer,
     clearSession,
-  }), [connected, roomId, role, name, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer, clearSession, selectedZone, gmSetZone]);
+  }), [connected, roomId, role, name, myId, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer, clearSession, selectedZone, gmSetZone]);
 
   return (
     <RealtimeContext.Provider value={value}>
