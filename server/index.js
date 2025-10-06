@@ -5,7 +5,15 @@ import { Server } from 'socket.io';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import 'dotenv/config';
+
+// Load dotenv only in development
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    await import('dotenv/config');
+  } catch (e) {
+    console.warn('dotenv not available (OK in production)');
+  }
+}
 
 const PORT = process.env.PORT || 4000;
 
