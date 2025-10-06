@@ -20,7 +20,12 @@ export default function CharacterSheet() {
       const name = (it?.name ?? '').toString();
       const description = (it?.description ?? '').toString();
       const locked = !!it?.locked;
-      return { name, description, locked };
+      // Preserve legendary item fields
+      const legendary = !!it?.legendary;
+      const imageUrl = it?.imageUrl || '';
+      const damage = it?.damage || '';
+      const uses = typeof it?.uses === 'number' ? it.uses : null;
+      return { name, description, locked, legendary, imageUrl, damage, uses };
     });
   }, []);
 
@@ -59,7 +64,16 @@ export default function CharacterSheet() {
   const save = (e) => {
     e.preventDefault();
     const inv = invList
-      .map((it) => ({ name: (it.name || '').trim(), description: (it.description || '').trim(), locked: !!it.locked }))
+      .map((it) => ({ 
+        name: (it.name || '').trim(), 
+        description: (it.description || '').trim(), 
+        locked: !!it.locked,
+        // Preserve legendary item fields
+        legendary: !!it.legendary,
+        imageUrl: it.imageUrl || '',
+        damage: it.damage || '',
+        uses: typeof it.uses === 'number' ? it.uses : undefined
+      }))
       .filter((it) => it.name.length > 0);
     const skl = skillsList
       .map((it) => ({ name: (it.name || '').trim(), description: (it.description || '').trim(), locked: !!it.locked }))
@@ -105,11 +119,38 @@ export default function CharacterSheet() {
         <CollapsibleSection title="Inventaire" collapsed={invCollapsed} onToggle={() => setInvCollapsed((v) => !v)} noCard>
           <div style={{ display: 'grid', gap: 10 }}>
             {invList.map((it, idx) => (
-              <div key={idx} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr', background: 'var(--bg-2)', borderRadius: 10, padding: 10 }}>
+              <div key={idx} style={{ 
+                display: 'grid', 
+                gap: 8, 
+                gridTemplateColumns: '1fr', 
+                background: it.legendary ? 'linear-gradient(135deg, rgba(15, 76, 117, 0.3) 0%, rgba(26, 26, 46, 0.5) 100%)' : 'var(--bg-2)', 
+                borderRadius: 10, 
+                padding: 10,
+                border: it.legendary ? '2px solid rgba(0, 212, 255, 0.5)' : 'none'
+              }}>
+                {/* Show image for legendary items */}
+                {it.legendary && it.imageUrl && (
+                  <div style={{ borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+                    <img 
+                      src={it.imageUrl} 
+                      alt={it.name}
+                      style={{ width: '100%', display: 'block', maxHeight: 200, objectFit: 'cover' }}
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                )}
                 <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
-                  <input placeholder="Nom de l'objet" value={it.name} onChange={(e) => editInv(idx, 'name', e.target.value)} disabled={!!it.locked} />
+                  <input 
+                    placeholder="Nom de l'objet" 
+                    value={it.name} 
+                    onChange={(e) => editInv(idx, 'name', e.target.value)} 
+                    disabled={!!it.locked}
+                    style={it.legendary ? { fontWeight: 'bold', color: '#00d4ff' } : {}}
+                  />
                   {it.locked ? (
-                    <span title="Élément d'origine (verrouillé)" style={{ opacity: 0.8 }}>🔒</span>
+                    <span title={it.legendary ? "Objet légendaire (verrouillé)" : "Élément d'origine (verrouillé)"} style={{ opacity: 0.8 }}>
+                      {it.legendary ? '⚡' : '🔒'}
+                    </span>
                   ) : (
                     <button type="button" onClick={() => removeInv(idx)} style={{ background: '#3c1111' }}>Supprimer</button>
                   )}

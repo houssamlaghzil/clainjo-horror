@@ -273,7 +273,16 @@ io.on('connection', (socket) => {
     const key = (it) => `${(it?.name||'').trim()}::${(it?.description||'').trim()}`;
     if (Array.isArray(inventory)) {
       const existingLocked = Array.isArray(player.inventory) ? player.inventory.filter((it) => it && it.locked) : [];
-      const incoming = inventory.filter(Boolean).map((it) => ({ name: String(it.name||''), description: String(it.description||''), locked: !!it.locked }));
+      const incoming = inventory.filter(Boolean).map((it) => ({ 
+        name: String(it.name||''), 
+        description: String(it.description||''), 
+        locked: !!it.locked,
+        // Preserve legendary item fields
+        legendary: !!it.legendary,
+        imageUrl: it.imageUrl || '',
+        damage: it.damage || '',
+        uses: typeof it.uses === 'number' ? it.uses : undefined
+      }));
       const map = new Map();
       // Always keep existing locked entries
       for (const it of existingLocked) map.set(key(it), { ...it, locked: true });
@@ -581,16 +590,20 @@ io.on('connection', (socket) => {
       // Increment usage counter
       player.copperItemUses += 1;
 
-      // Update presence to sync inventory
+      // Log for debugging
+      console.log(`✅ Copper generated item: ${itemData.objet.nom}, inventory count: ${player.inventory.length}`);
+
+      // Send success response with full data AND updated inventory
+      socket.emit('copper:item-generated', {
+        ...result,
+        usesRemaining: 10 - player.copperItemUses,
+        updatedInventory: player.inventory
+      });
+
+      // Update presence to sync inventory with all clients
       io.to(roomId).emit('presence:update', {
         players: Array.from(room.players.values()).map(sanitizePublicPlayer),
         gms: Array.from(room.gms.values()),
-      });
-
-      // Send success response with full data
-      socket.emit('copper:item-generated', {
-        ...result,
-        usesRemaining: 10 - player.copperItemUses
       });
 
       // Notify GMs

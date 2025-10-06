@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useRealtime } from '../context/RealtimeProvider.jsx';
 
 export default function LegendaryItemGenerator() {
-  const { socket, roomId, name } = useRealtime();
+  const { socket, roomId, name, setInventory } = useRealtime();
   const [generating, setGenerating] = useState(false);
   const [lastGenerated, setLastGenerated] = useState(null);
   const [error, setError] = useState(null);
@@ -17,13 +17,21 @@ export default function LegendaryItemGenerator() {
     if (!socket) return;
 
     const handleItemGenerated = (data) => {
+      console.log('✅ Item generated:', data);
       setLastGenerated(data);
       setUsesRemaining(data.usesRemaining);
       setGenerating(false);
       setError(null);
+      
+      // Force update inventory immediately
+      if (data.updatedInventory) {
+        console.log('🔄 Updating inventory with:', data.updatedInventory);
+        setInventory(data.updatedInventory);
+      }
     };
 
     const handleItemError = (data) => {
+      console.error('❌ Item generation error:', data);
       setError(data.error);
       setGenerating(false);
     };
