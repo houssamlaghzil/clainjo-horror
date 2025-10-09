@@ -13,7 +13,10 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "maj": "docker compose down || true && docker rm -f clainjo-horror || true && git pull && docker compose up -d --build --remove-orphans"
+    "maj": "docker compose down || true && docker rm -f clainjo-horror || true && git pull && docker compose up -d --build --remove-orphans",
+    "generate-icons": "node scripts/generate-icons.js",
+    "generate-placeholder-icons": "node scripts/generate-placeholder-icons.js",
+    "pwa:test": "npm run build && npm run preview"
   },
   "dependencies": {
     "react": "^19.1.1",

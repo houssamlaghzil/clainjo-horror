@@ -13,13 +13,13 @@
 
 # Clainjo Horror
 
-> Une table qui respire, un couloir qui chuchote. Jets autoritatifs, screamers synchronisés, duel de sorcellerie arbitré à la milliseconde.
 
 - **Frontend** : React + Vite (mobile-first pour Joueurs)
 - **Realtime** : Socket.IO (client/serveur)
 - **Backend** : Express + Socket.IO
 - **IA** : OpenAI Responses API pour arbitrer le Wizard Battle
-- **UX** : sobre, lisible, “brutal” quand il faut
+- **PWA** : Installable comme app native (Android/iOS/Desktop)
+- **UX** : sobre, lisible, "brutal" quand il faut
 
 ---
 
@@ -28,6 +28,7 @@
 - [Aperçu](#aperçu)
 - [Fonctionnalités](#fonctionnalités)
 - [Fonctionnalités détaillées](#fonctionnalités-détaillées)
+- [PWA - Progressive Web App](#pwa---progressive-web-app)
 - [Démarrage rapide](#démarrage-rapide)
 - [Docker (prod-like)](#docker-prod-like)
 - [Configuration](#configuration)
@@ -119,6 +120,39 @@ MJ desktop confortable, Joueurs mobile-first.
   Hébergement simple des fichiers d’indice.
 - __Comment ça marche__
   Placez vos fichiers dans le dossier `public/` (ex: `public/hints/plan.pdf`) et utilisez l’URL `/hints/plan.pdf` dans le panneau MJ (mode "Contenu").
+
+---
+
+## PWA - Progressive Web App
+
+**Clainjo Horror est maintenant une PWA complète**, installable comme une application native sur Android, iOS et Desktop.
+
+### ✨ Fonctionnalités PWA
+
+- 📱 **Installation native** : WebAPK sur Android, mode standalone sur iOS/Desktop
+- 💾 **Fonctionne hors ligne** : Service Worker avec cache intelligent
+- 🔄 **Mises à jour automatiques** : Notification utilisateur + activation immédiate
+- 🎨 **Expérience native** : Plein écran, icône sur l'écran d'accueil, splash screen
+- 🔗 **Liens profonds** : Les liens du domaine ouvrent directement l'app (Android)
+
+### 🚀 Installation rapide PWA
+
+```bash
+# Générer les icônes placeholder
+npm run generate-placeholder-icons
+
+# Configurer votre domaine dans public/.well-known/assetlinks.json
+# Build et test
+npm run build
+npm start
+```
+
+### 📚 Documentation PWA
+
+- **[PWA_QUICKSTART.md](./PWA_QUICKSTART.md)** - Guide de démarrage rapide (5 min)
+- **[PWA_README.md](./PWA_README.md)** - Vue d'ensemble et structure
+- **[PWA_SETUP.md](./PWA_SETUP.md)** - Documentation complète
+- **[WEBAPK_FLOW.md](./WEBAPK_FLOW.md)** - Flux Chrome → WebAPK Android
 
 ---
 

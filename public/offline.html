@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0c">
+  <title>Clainjo Horror - Hors ligne</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #0a0a0c 0%, #1a1a1e 100%);
+      color: #ffffff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+    
+    .icon {
+      font-size: 80px;
+      margin-bottom: 20px;
+      opacity: 0.8;
+    }
+    
+    h1 {
+      font-size: 32px;
+      margin-bottom: 16px;
+      color: #ff4444;
+    }
+    
+    p {
+      font-size: 18px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+      opacity: 0.9;
+    }
+    
+    .button {
+      display: inline-block;
+      padding: 12px 32px;
+      background: #8b0000;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      transition: background 0.3s ease;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .button:hover {
+      background: #a00000;
+    }
+    
+    .status {
+      margin-top: 32px;
+      padding: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      font-size: 14px;
+      opacity: 0.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🌐</div>
+    <h1>Vous êtes hors ligne</h1>
+    <p>
+      L'application Clainjo Horror nécessite une connexion internet pour fonctionner.
+      Veuillez vérifier votre connexion et réessayer.
+    </p>
+    <button class="button" onclick="window.location.reload()">
+      Réessayer
+    </button>
+    <div class="status">
+      <p>Mode hors ligne activé</p>
+      <p id="connection-status">Vérification de la connexion...</p>
+    </div>
+  </div>
+  
+  <script>
+    // Vérifier périodiquement la connexion
+    function checkConnection() {
+      if (navigator.onLine) {
+        document.getElementById('connection-status').textContent = 'Connexion détectée ! Rechargement...';
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        document.getElementById('connection-status').textContent = 'Aucune connexion détectée';
+      }
+    }
+    
+    // Vérifier toutes les 3 secondes
+    setInterval(checkConnection, 3000);
+    checkConnection();
+    
+    // Écouter les changements de connexion
+    window.addEventListener('online', () => {
+      document.getElementById('connection-status').textContent = 'Connexion rétablie ! Rechargement...';
+      setTimeout(() => window.location.reload(), 1000);
+    });
+    
+    window.addEventListener('offline', () => {
+      document.getElementById('connection-status').textContent = 'Connexion perdue';
+    });
+  </script>
+</body>
+</html>

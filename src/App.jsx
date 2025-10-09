@@ -7,6 +7,8 @@ import ScreamerOverlay from './components/ScreamerOverlay.jsx'
 import HintModal from './components/HintModal.jsx'
 import HintBubble from './components/HintBubble.jsx'
 import HapticsManager from './components/HapticsManager.jsx'
+import InstallPrompt from './components/InstallPrompt.jsx'
+import UpdateNotification from './components/UpdateNotification.jsx'
 import './App.css'
 
 function App() {
@@ -16,6 +18,8 @@ function App() {
       <HintModal />
       <HapticsManager />
       <ScreamerOverlay />
+      <InstallPrompt />
+      <UpdateNotification />
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/player" element={<Player />} />
