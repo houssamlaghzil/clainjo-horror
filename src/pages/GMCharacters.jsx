@@ -14,6 +14,7 @@ export default function GMCharacters() {
   const [strength, setStrength] = useState(0);
   const [intelligence, setIntelligence] = useState(0);
   const [agility, setAgility] = useState(0);
+  const [lucidity, setLucidity] = useState(0);
   const [inventory, setInventory] = useState([]);
   const [skills, setSkills] = useState([]);
 
@@ -34,6 +35,7 @@ export default function GMCharacters() {
     setStrength(current.strength ?? 0);
     setIntelligence(current.intelligence ?? 0);
     setAgility(current.agility ?? 0);
+    setLucidity(current.lucidity ?? 0);
     setInventory(Array.isArray(current.inventory) ? current.inventory.map((it) => ({ name: it?.name || '', description: it?.description || '', locked: !!it.locked })) : []);
     setSkills(Array.isArray(current.skills) ? current.skills.map((it) => ({ name: it?.name || '', description: it?.description || '', locked: !!it.locked })) : []);
   }, [current]);
@@ -53,6 +55,7 @@ export default function GMCharacters() {
     setStrength(current.strength ?? 0);
     setIntelligence(current.intelligence ?? 0);
     setAgility(current.agility ?? 0);
+    setLucidity(current.lucidity ?? 0);
     setInventory(Array.isArray(current.inventory) ? current.inventory.map((it) => ({ name: it?.name || '', description: it?.description || '', locked: !!it.locked })) : []);
     setSkills(Array.isArray(current.skills) ? current.skills.map((it) => ({ name: it?.name || '', description: it?.description || '', locked: !!it.locked })) : []);
   };
@@ -61,7 +64,7 @@ export default function GMCharacters() {
     if (!current) return;
     const inv = inventory.map((it) => ({ name: (it.name || '').trim(), description: (it.description || '').trim(), locked: !!it.locked }));
     const skl = skills.map((it) => ({ name: (it.name || '').trim(), description: (it.description || '').trim(), locked: !!it.locked }));
-    gmUpdatePlayer({ target: current.socketId, hp: Number(hp || 0), money: Number(money || 0), strength: Number(strength || 0), intelligence: Number(intelligence || 0), agility: Number(agility || 0), inventory: inv, skills: skl });
+    gmUpdatePlayer({ target: current.socketId, hp: Number(hp || 0), money: Number(money || 0), strength: Number(strength || 0), intelligence: Number(intelligence || 0), agility: Number(agility || 0), lucidity: Number(lucidity || 0), inventory: inv, skills: skl });
   };
 
   return (
@@ -92,6 +95,7 @@ export default function GMCharacters() {
               <label>Force<input type="number" value={strength} onChange={(e) => setStrength(Number(e.target.value))} /></label>
               <label>Intelligence<input type="number" value={intelligence} onChange={(e) => setIntelligence(Number(e.target.value))} /></label>
               <label>Agilité<input type="number" value={agility} onChange={(e) => setAgility(Number(e.target.value))} /></label>
+              <label>Lucidité<input type="number" value={lucidity} onChange={(e) => setLucidity(Number(e.target.value))} min="0" /></label>
             </div>
           </div>
         )}

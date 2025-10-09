@@ -12,7 +12,7 @@ export default function PresenceList() {
       <ul style={{ marginTop: 8 }}>
         {players.map((p) => (
           <li key={p.socketId}>
-            <strong>{p.name}</strong> — PV: {p.hp ?? 0} — Argent: {p.money ?? 0} — Obj: {Array.isArray(p.inventory) ? p.inventory.length : 0}
+            <strong>{p.name}</strong> — PV: {p.hp ?? 0} — Argent: {p.money ?? 0} — Lucidité: {p.lucidity ?? 0} — Obj: {Array.isArray(p.inventory) ? p.inventory.length : 0}
           </li>
         ))}
       </ul>

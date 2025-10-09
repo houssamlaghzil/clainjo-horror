@@ -3,7 +3,7 @@ import { useRealtime } from '../context/RealtimeProvider.jsx';
 import CollapsibleSection from './CollapsibleSection.jsx';
 
 export default function CharacterSheet() {
-  const { hp, money, inventory, strength, intelligence, agility, skills, updatePlayer } = useRealtime();
+  const { hp, money, inventory, strength, intelligence, agility, lucidity, skills, updatePlayer } = useRealtime();
 
   // Basic stats
   const [hpEdit, setHpEdit] = useState(hp ?? 0);
@@ -114,6 +114,12 @@ export default function CharacterSheet() {
             Agilité
             <input type="number" value={agiEdit} onChange={(e) => setAgiEdit(Number(e.target.value))} />
           </label>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ opacity: 0.9 }}>Lucidité (MJ uniquement)</span>
+              <strong>{typeof lucidity === 'number' ? lucidity : 0}</strong>
+            </div>
+          </div>
         </div>
 
         <CollapsibleSection title="Inventaire" collapsed={invCollapsed} onToggle={() => setInvCollapsed((v) => !v)} noCard>

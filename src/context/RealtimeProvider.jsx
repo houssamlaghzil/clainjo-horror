@@ -46,6 +46,7 @@ export function RealtimeProvider({ children }) {
   const [strength, setStrength] = useState(0);
   const [intelligence, setIntelligence] = useState(0);
   const [agility, setAgility] = useState(0);
+  const [lucidity, setLucidity] = useState(0);
   const [skills, setSkills] = useState([]);
 
   // presence & logs
@@ -130,6 +131,7 @@ export function RealtimeProvider({ children }) {
           if (typeof me.strength === 'number') setStrength(me.strength);
           if (typeof me.intelligence === 'number') setIntelligence(me.intelligence);
           if (typeof me.agility === 'number') setAgility(me.agility);
+          if (typeof me.lucidity === 'number') setLucidity(me.lucidity);
           if (Array.isArray(me.skills)) setSkills(me.skills);
         }
       }
@@ -153,6 +155,7 @@ export function RealtimeProvider({ children }) {
         if (typeof y.strength === 'number') setStrength(y.strength);
         if (typeof y.intelligence === 'number') setIntelligence(y.intelligence);
         if (typeof y.agility === 'number') setAgility(y.agility);
+        if (typeof y.lucidity === 'number') setLucidity(y.lucidity);
         if (Array.isArray(y.skills)) setSkills(y.skills);
       }
       if (payload.zone) setSelectedZone(String(payload.zone));
@@ -307,10 +310,10 @@ export function RealtimeProvider({ children }) {
   const applyLensPreset = useCallback(async () => false, []);
 
   // GM: update any player's character sheet
-  const gmUpdatePlayer = useCallback(({ target, hp, money, inventory, strength, intelligence, agility, skills }) => {
+  const gmUpdatePlayer = useCallback(({ target, hp, money, inventory, strength, intelligence, agility, skills, lucidity }) => {
     if (!roomId) return;
     const justJoined = ensureJoin();
-    const emit = () => socketRef.current?.emit('gm:player:update', { roomId, target, hp, money, inventory, strength, intelligence, agility, skills });
+    const emit = () => socketRef.current?.emit('gm:player:update', { roomId, target, hp, money, inventory, strength, intelligence, agility, skills, lucidity });
     if (justJoined) setTimeout(emit, 50); else emit();
   }, [roomId, ensureJoin]);
 
@@ -460,6 +463,7 @@ export function RealtimeProvider({ children }) {
     strength, setStrength,
     intelligence, setIntelligence,
     agility, setAgility,
+    lucidity, setLucidity,
     skills, setSkills,
 
     // presence & logs
@@ -516,7 +520,7 @@ export function RealtimeProvider({ children }) {
     sendHapticsStop,
     gmUpdatePlayer,
     clearSession,
-  }), [connected, roomId, role, name, myId, hp, money, inventory, strength, intelligence, agility, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer, clearSession, selectedZone, gmSetZone]);
+  }), [connected, roomId, role, name, myId, hp, money, inventory, strength, intelligence, agility, lucidity, skills, players, gms, diceLog, chat, serverVersion, screamer, haptics, hintBubble, hintContent, wizardActive, wizardRound, wizardLocked, wizardGroupsCount, wizardResolving, wizardAIResult, wizardAIError, wizardMyResult, statusSummary, join, sendChat, rollDice, updatePlayer, sendScreamer, sendHint, claimHint, openInfoHint, wizardToggle, wizardSubmit, wizardForce, wizardRetry, wizardGet, wizardManual, wizardPublish, sendHapticsStart, sendHapticsStop, gmUpdatePlayer, clearSession, selectedZone, gmSetZone]);
 
   return (
     <RealtimeContext.Provider value={value}>

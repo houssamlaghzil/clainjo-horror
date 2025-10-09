@@ -97,10 +97,11 @@ function sanitizePublicPlayer(p) {
     strength = 0,
     intelligence = 0,
     agility = 0,
+    lucidity = 0,
     skills = [], // Array<{ name, description }>
     copperItemUses = 0,
   } = p;
-  return { socketId, name, role, hp, money, inventory, strength, intelligence, agility, skills, copperItemUses };
+  return { socketId, name, role, hp, money, inventory, strength, intelligence, agility, lucidity, skills, copperItemUses };
 }
 
 // Socket.IO connection handlers
@@ -145,6 +146,8 @@ io.on('connection', (socket) => {
       strength: existingPlayer?.strength ?? strength,
       intelligence: existingPlayer?.intelligence ?? intelligence,
       agility: existingPlayer?.agility ?? agility,
+      // lucidity is server-controlled, initialize from existing or 0
+      lucidity: existingPlayer?.lucidity ?? 0,
       skills: existingPlayer?.skills ?? skills,
       // Preserve Copper's usage count
       copperItemUses: existingPlayer?.copperItemUses ?? 0
@@ -192,7 +195,7 @@ io.on('connection', (socket) => {
   });
 
   // GM-only: update another player's character sheet
-  socket.on('gm:player:update', ({ roomId, target, hp, money, inventory, strength, intelligence, agility, skills }) => {
+  socket.on('gm:player:update', ({ roomId, target, hp, money, inventory, strength, intelligence, agility, skills, lucidity }) => {
     const room = rooms.get(roomId);
     if (!room) return;
     if (!room.gms.has(socket.id)) return; // only GM can update others
@@ -205,6 +208,11 @@ io.on('connection', (socket) => {
     if (typeof strength === 'number') player.strength = strength;
     if (typeof intelligence === 'number') player.intelligence = intelligence;
     if (typeof agility === 'number') player.agility = agility;
+    // Lucidity: GM can increase only
+    if (typeof lucidity === 'number') {
+      const current = Number(player.lucidity || 0);
+      if (lucidity > current) player.lucidity = lucidity;
+    }
     if (Array.isArray(skills)) player.skills = skills;
     // Persist snapshot by name
     try { room.persistentPlayers.set(player.name, { ...player }); } catch (_) {}
