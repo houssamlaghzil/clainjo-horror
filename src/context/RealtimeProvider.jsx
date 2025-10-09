@@ -121,10 +121,13 @@ export function RealtimeProvider({ children }) {
       const ps = payload.players || [];
       setPlayers(ps);
       setGms(payload.gms || []);
-      // If we know our socketId, sync our own character fields to reflect GM edits
-      if (myId) {
-        const me = ps.find((p) => p.socketId === myId);
+      // Sync our own character fields to reflect GM edits.
+      // Be resilient to reconnects by falling back to current socket id if myId is not set/stale.
+      const sid = myId || s.id || socketRef.current?.id || '';
+      if (sid) {
+        const me = ps.find((p) => p.socketId === sid);
         if (me) {
+          if (!myId) setMyId(sid);
           if (typeof me.hp === 'number') setHp(me.hp);
           if (typeof me.money === 'number') setMoney(me.money);
           if (Array.isArray(me.inventory)) setInventory(me.inventory);
