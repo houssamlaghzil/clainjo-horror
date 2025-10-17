@@ -868,7 +868,36 @@ async function resolveWizardRound(roomId) {
   const playersById = Object.fromEntries(Array.from(room.players).map(([sid, p]) => [sid, { name: p.name || sid.slice(0,4) }]));
   let payload;
   try {
-    const content = `Tu es un arbitre impartial d'un duel de sorcellerie. On te donne des sorts (texte libre) envoyés par des joueurs, regroupés par binômes/trinômes secrets. Règles: si un sort est incohérent/surpuissant, annule-le. Tiens compte de la cohérence univers, originalité, vitesse, et interactions élémentaires (feu vs glace etc.). Pour CHAQUE joueur, fournis un JSON strict décrivant: { inflicted: string, suffered: string, diceMod: integer (bonus = nombre négatif, malus = positif), hpDelta: integer (soin positif, dégâts négatif), narrative: string }. Réponds UNIQUEMENT en JSON objet map { <socketId>: {...} } sans texte additionnel.`;
+    const content = `Tu es un arbitre impartial d'un duel de sorcellerie horrifique dans l'univers Inaca Blood. Les joueurs envoient des sorts en texte libre, regroupés par binômes/trinômes secrets.
+
+ANALYSE DYNAMIQUE DES INTENTIONS:
+- Détecte automatiquement si le sort est une ATTAQUE (offensive), un BONUS (buff pour soi ou alliés), ou une BÉNÉDICTION (protection/soin)
+- Les attaques infligent des dégâts (hpDelta négatif) et peuvent imposer des malus de dé (diceMod positif)
+- Les bonus/bénédictions accordent des avantages (diceMod négatif = bonus aux jets) et peuvent soigner (hpDelta positif)
+- Si un joueur lance un bonus/bénédiction, il ne devrait PAS subir de dégâts sauf si un adversaire l'attaque directement
+
+RÈGLES D'ARBITRAGE:
+1. Cohérence univers: les sorts doivent être crédibles dans l'univers horrifique/dark fantasy
+2. Interactions élémentaires: feu > glace, lumière > ténèbres, etc.
+3. Originalité et rapidité: récompense la créativité et la concision
+4. Équilibrage: annule les sorts incohérents/surpuissants
+5. Interactions groupes: tiens compte des synergies entre alliés du même groupe
+
+VALEURS NUMÉRIQUES (guidelines):
+- diceMod: -3 à +3 (bonus fort = -3, malus sévère = +3)
+- hpDelta: -6 à +6 (dégâts lourds = -6, soin majeur = +6)
+- Ajuste selon la puissance et cohérence du sort
+
+Pour CHAQUE joueur, fournis un JSON strict:
+{
+  "inflicted": "description de ce qu'il a infligé aux adversaires",
+  "suffered": "description de ce qu'il a subi des adversaires",
+  "diceMod": integer (bonus = négatif, malus = positif),
+  "hpDelta": integer (soin = positif, dégâts = négatif),
+  "narrative": "effet narratif/atmosphérique unique et immersif"
+}
+
+Réponds UNIQUEMENT en JSON objet map { "<socketId>": {...} } sans texte additionnel.`;
     payload = { role: 'system', content };
   } catch (e) {
     console.error('[wizard] Prompt build error:', e);

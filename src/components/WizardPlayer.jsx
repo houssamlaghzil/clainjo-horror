@@ -61,9 +61,17 @@ export default function WizardPlayer() {
         </div>
       ) : (
         <form onSubmit={onSend} style={{ display: 'grid', gap: 8 }}>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Décrivez votre sort..." rows={4} style={{ width: '100%' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div style={{ opacity: 0.8 }}>Astuce: soyez cohérent, original, rapide.</div>
+          <div style={{ marginBottom: 4, padding: '8px 10px', background: 'rgba(21,74,138,0.15)', borderRadius: 6, fontSize: '0.9em', lineHeight: 1.4 }}>
+            <strong>Types de sorts détectés automatiquement:</strong>
+            <ul style={{ margin: '4px 0 0 0', paddingLeft: 20 }}>
+              <li><strong>Attaque</strong>: inflige des dégâts et malus aux adversaires</li>
+              <li><strong>Bonus</strong>: améliore vos jets de dé ou ceux de vos alliés</li>
+              <li><strong>Bénédiction</strong>: soigne ou protège vous ou vos alliés</li>
+            </ul>
+          </div>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Ex: 'Je lance une boule de feu dévastatrice' (attaque) ou 'Je bénis mon allié avec une aura protectrice' (bénédiction)..." rows={5} style={{ width: '100%' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ opacity: 0.8, fontSize: '0.9em' }}>💡 Soyez cohérent, original et rapide</div>
             <button type="submit" style={{ background: '#154a8a', color: '#fff', padding: '8px 12px', borderRadius: 8 }}>Envoyer</button>
           </div>
         </form>
