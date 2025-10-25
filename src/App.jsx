@@ -3,7 +3,7 @@ import Landing from './pages/Landing.jsx'
 import Player from './pages/Player.jsx'
 import GM from './pages/GM.jsx'
 import GMCharacters from './pages/GMCharacters.jsx'
-import ScreamerOverlay from './components/ScreamerOverlay.jsx'
+import ConfettiOverlay from './components/ConfettiOverlay.jsx'
 import HintModal from './components/HintModal.jsx'
 import HintBubble from './components/HintBubble.jsx'
 import HapticsManager from './components/HapticsManager.jsx'
@@ -17,7 +17,7 @@ function App() {
       <HintBubble />
       <HintModal />
       <HapticsManager />
-      <ScreamerOverlay />
+      <ConfettiOverlay />
       <InstallPrompt />
       <UpdateNotification />
       <Routes>

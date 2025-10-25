@@ -73,7 +73,7 @@ export default function InstallPrompt() {
       bottom: 0,
       left: 0,
       right: 0,
-      background: 'linear-gradient(135deg, #8b0000 0%, #a00000 100%)',
+      background: 'linear-gradient(135deg, #3a2d20 0%, #2a1f18 100%)',
       padding: '16px',
       boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.5)',
       zIndex: 10000,
@@ -110,8 +110,8 @@ export default function InstallPrompt() {
             disabled={isInstalling}
             style={{
               padding: '10px 20px',
-              background: '#fff',
-              color: '#8b0000',
+              background: '#d4af37',
+              color: '#1a1410',
               border: 'none',
               borderRadius: '8px',
               fontSize: '16px',

@@ -71,7 +71,7 @@ export default function WizardGM() {
       {wizardActive && (
         <>
           <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={wizardForce} disabled={wizardResolving} style={{ background: '#8b0000', color: '#fff', padding: '6px 10px', borderRadius: 8 }}>Forcer résolution</button>
+            <button onClick={wizardForce} disabled={wizardResolving} style={{ background: '#d4af37', color: '#1a1410', padding: '6px 10px', borderRadius: 8, fontWeight: 700 }}>Forcer résolution</button>
             {wizardAIError?.canRetry && (
               <button onClick={wizardRetry} disabled={wizardResolving} style={{ background: '#b36a00', color: '#fff', padding: '6px 10px', borderRadius: 8 }}>Relancer IA</button>
             )}

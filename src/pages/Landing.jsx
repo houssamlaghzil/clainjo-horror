@@ -59,8 +59,8 @@ export default function Landing() {
 
   return (
     <div style={{ padding: 16, maxWidth: 520, margin: '0 auto' }}>
-      <h1>Clainjo Horror</h1>
-      <p>Connectez-vous à une partie, choisissez votre rôle et entrez votre nom.</p>
+      <h1>Clainjo - Aventure Médiévale</h1>
+      <p>Connectez-vous à une partie, choisissez votre rôle et entrez votre nom pour commencer votre quête.</p>
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
         <label>
           Room ID

@@ -73,13 +73,13 @@ export default function GMControls() {
   };
 
   return (
-    <div style={{ border: '2px solid #8b0000', borderRadius: 12, padding: 12, background: 'rgba(139,0,0,0.08)' }}>
-      <h3>Contrôles MJ — Screamers</h3>
+    <div style={{ border: '2px solid #d4af37', borderRadius: 12, padding: 12, background: 'rgba(212,175,55,0.08)' }}>
+      <h3>Contrôles MJ — Effets Spéciaux</h3>
       <form onSubmit={onSend} style={{ display: 'grid', gap: 8 }}>
         <label>
           Séléction des cibles ({targets === 'all' ? playerOptions.length : (Array.isArray(targets) ? targets.length : 0)}/{playerOptions.length})
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-            <button type="button" onClick={() => setTargets('all')} style={{ border: '1px solid #b3001b', borderRadius: 20, padding: '6px 10px', background: targets === 'all' ? '#1b1b1b' : '#101010', color: '#fff' }}>Tous</button>
+            <button type="button" onClick={() => setTargets('all')} style={{ border: '1px solid #d4af37', borderRadius: 20, padding: '6px 10px', background: targets === 'all' ? '#3a2d20' : '#2a1f18', color: '#f4e4c1' }}>Tous</button>
             {playerOptions.map((opt) => {
               const selected = targets === 'all' || (Array.isArray(targets) && targets.includes(opt.value));
               return (
@@ -114,7 +114,7 @@ export default function GMControls() {
           Intensité: {intensity}
           <input type="range" min="0" max="1" step="0.05" value={intensity} onChange={(e) => setIntensity(e.target.value)} />
         </label>
-        <button type="submit" style={{ backgroundColor: '#8b0000', color: '#fff', padding: '8px 12px', borderRadius: 6 }}>Envoyer</button>
+        <button type="submit" style={{ backgroundColor: '#d4af37', color: '#1a1410', padding: '8px 12px', borderRadius: 6, fontWeight: 700 }}>Envoyer</button>
       </form>
 
       <h3>Contrôles MJ — Indices</h3>

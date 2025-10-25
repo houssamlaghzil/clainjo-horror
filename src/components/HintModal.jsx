@@ -34,8 +34,8 @@ export default function HintModal() {
   };
   const body = { padding: 12, background: '#121214' };
   const btn = {
-    background: '#8b0000', color: '#fff', border: 'none', borderRadius: 6,
-    padding: '8px 12px', cursor: 'pointer'
+    background: '#d4af37', color: '#1a1410', border: 'none', borderRadius: 6,
+    padding: '8px 12px', cursor: 'pointer', fontWeight: 700
   };
 
   const renderContent = () => {

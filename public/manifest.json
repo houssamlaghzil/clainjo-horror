@@ -1,14 +1,14 @@
 {
-  "name": "Clainjo - Inaca Blood",
+  "name": "Clainjo - Aventure Médiévale",
   "short_name": "Clainjo",
-  "description": "Jeu de rôle horrifique en univers Inaca, jouable MJ + joueurs via navigateur",
+  "description": "Jeu de rôle médiéval-fantastique en univers Inaca, jouable MJ + joueurs via navigateur",
   "id": "https://clainjo-horror.promete-it.fr/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#1a1410",
+  "theme_color": "#1a1410",
   "categories": ["games", "entertainment"],
   "prefer_related_applications": false,
   "icons": [

@@ -78,7 +78,7 @@ export default function DiceRoller() {
             Libellé
             <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="attaque, perception…" />
           </label>
-          <button type="submit" disabled={rolling} style={{ backgroundColor: '#8b0000', color: '#fff', padding: '8px 12px', borderRadius: 8 }}>
+          <button type="submit" disabled={rolling} style={{ backgroundColor: '#d4af37', color: '#1a1410', padding: '8px 12px', borderRadius: 8, fontWeight: 700 }}>
             {rolling ? '…' : 'Lancer'}
           </button>
         </div>
@@ -87,10 +87,10 @@ export default function DiceRoller() {
       {/* Rolling animation */}
       {rolling && (
         <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 6, background: '#1b1b1b', border: '1px solid rgba(255,255,255,0.12)', position: 'relative', animation: 'shake 0.6s infinite' }}>
-            <div style={{ position: 'absolute', top: 6, left: 6, width: 6, height: 6, background: '#e1062c', borderRadius: '50%' }} />
-            <div style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6, background: '#e1062c', borderRadius: '50%' }} />
-            <div style={{ position: 'absolute', bottom: 6, left: 11, width: 6, height: 6, background: '#e1062c', borderRadius: '50%' }} />
+          <div style={{ width: 28, height: 28, borderRadius: 6, background: '#3a2d20', border: '1px solid rgba(212,175,55,0.3)', position: 'relative', animation: 'shake 0.6s infinite' }}>
+            <div style={{ position: 'absolute', top: 6, left: 6, width: 6, height: 6, background: '#ffd700', borderRadius: '50%' }} />
+            <div style={{ position: 'absolute', top: 6, right: 6, width: 6, height: 6, background: '#ffd700', borderRadius: '50%' }} />
+            <div style={{ position: 'absolute', bottom: 6, left: 11, width: 6, height: 6, background: '#ffd700', borderRadius: '50%' }} />
           </div>
           <div style={{ opacity: 0.9 }}>Lancement en cours…</div>
         </div>
@@ -106,7 +106,7 @@ export default function DiceRoller() {
             </span>
             <span style={{ opacity: 0.85 }}>({r.count}d{r.sides})</span>
             {r.label ? <span> [{r.label}] </span> : ' '}
-            <strong style={{ color: '#e1062c' }}>{r.rolls?.join(', ')}</strong>
+            <strong style={{ color: '#ffd700' }}>{r.rolls?.join(', ')}</strong>
             <span> = <strong>{r.total}</strong></span>
             {r.modifier && (
               <span style={{ marginLeft: 8, fontSize: 12, opacity: 0.85 }}>
