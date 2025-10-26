@@ -119,9 +119,7 @@ function Panorama360({ src, alt }) {
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 1100);
-    // Set initial camera rotation to look at the center/front of the panorama
-    camera.rotation.order = 'YXZ';
-    camera.rotation.y = Math.PI; // Rotate 180 degrees to face forward
+    camera.position.set(0, 0, 0);
     cameraRef.current = camera;
 
     // Inverted sphere geometry for equirectangular panoramic texture
@@ -160,6 +158,8 @@ function Panorama360({ src, alt }) {
     
     material = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geometry, material);
+    // Rotate the sphere 180 degrees so the front of the equirectangular image faces forward
+    mesh.rotation.y = Math.PI;
     scene.add(mesh);
 
     // DeviceOrientation controls (monoscopic)
