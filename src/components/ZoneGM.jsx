@@ -13,6 +13,13 @@ export default function ZoneGM() {
   }, [selectedZone]);
 
   const currentUrl = maps[local];
+  
+  // Detect if current selection is a video
+  const isVideo = useMemo(() => {
+    if (!currentUrl) return false;
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov'];
+    return videoExtensions.some(ext => currentUrl.toLowerCase().endsWith(ext));
+  }, [currentUrl]);
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -33,7 +40,18 @@ export default function ZoneGM() {
           </div>
           {currentUrl && (
             <div style={{ marginTop: 8, border: '1px solid #1f2937', borderRadius: 8, overflow: 'hidden', maxHeight: 180 }}>
-              <img src={currentUrl} alt={local} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }} />
+              {isVideo ? (
+                <video 
+                  src={currentUrl} 
+                  loop 
+                  muted 
+                  autoPlay 
+                  playsInline
+                  style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }}
+                />
+              ) : (
+                <img src={currentUrl} alt={local} style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }} />
+              )}
             </div>
           )}
         </>
