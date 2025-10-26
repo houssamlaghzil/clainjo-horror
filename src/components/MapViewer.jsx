@@ -50,7 +50,14 @@ function Panorama360({ src, alt }) {
   const cameraRef = useRef(null);
   const controlsRef = useRef(null);
   const rafRef = useRef(0);
+  const videoRef = useRef(null);
   const [needPermission, setNeedPermission] = useState(false);
+  
+  // Detect if src is a video file
+  const isVideo = useMemo(() => {
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov'];
+    return videoExtensions.some(ext => src.toLowerCase().endsWith(ext));
+  }, [src]);
 
   // Lightweight DeviceOrientation controls (internal, no external example import)
   function createDeviceOrientationControls(object) {
@@ -118,9 +125,37 @@ function Panorama360({ src, alt }) {
     const geometry = new THREE.SphereGeometry(500, 64, 32);
     geometry.scale(-1, 1, 1); // invert the sphere to view from inside
 
-    const texture = new THREE.TextureLoader().load(src);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    const material = new THREE.MeshBasicMaterial({ map: texture });
+    let texture;
+    let material;
+    
+    if (isVideo) {
+      // Create video element for video textures
+      const video = document.createElement('video');
+      video.src = src;
+      video.crossOrigin = 'anonymous';
+      video.loop = true;
+      video.muted = true; // Required for autoplay
+      video.playsInline = true; // Required for iOS
+      video.setAttribute('playsinline', ''); // iOS compatibility
+      videoRef.current = video;
+      
+      // Start playing the video
+      video.play().catch(err => {
+        console.warn('Video autoplay failed:', err);
+      });
+      
+      // Create video texture
+      texture = new THREE.VideoTexture(video);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.minFilter = THREE.LinearFilter;
+      texture.magFilter = THREE.LinearFilter;
+    } else {
+      // Load static image texture
+      texture = new THREE.TextureLoader().load(src);
+      texture.colorSpace = THREE.SRGBColorSpace;
+    }
+    
+    material = new THREE.MeshBasicMaterial({ map: texture });
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
 
@@ -156,11 +191,21 @@ function Panorama360({ src, alt }) {
       try { controls?.dispose?.(); } catch (_) {}
       try { renderer.dispose(); } catch (_) {}
       try { mount.removeChild(renderer.domElement); } catch (_) {}
+      
+      // Clean up video element if exists
+      if (videoRef.current) {
+        try {
+          videoRef.current.pause();
+          videoRef.current.src = '';
+          videoRef.current.load();
+        } catch (_) {}
+      }
+      
       texture.dispose();
       geometry.dispose();
       material.dispose();
     };
-  }, [src]);
+  }, [src, isVideo]);
 
   const requestOrientation = async () => {
     try {
